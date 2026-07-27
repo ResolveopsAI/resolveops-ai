@@ -1,3 +1,16 @@
 resolveops-ai.sathvikdevops.site {
-    reverse_proxy frontend:3000
+    # Proxy all /api/* requests directly to the API Gateway
+    handle /api/* {
+        # Optional: Increase timeouts for long-running sync tasks
+        reverse_proxy api-gateway-service:8000 {
+            transport http {
+                response_header_timeout 300s
+            }
+        }
+    }
+
+    # Proxy everything else to the Next.js frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
 }
