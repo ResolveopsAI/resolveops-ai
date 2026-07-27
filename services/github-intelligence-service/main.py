@@ -220,11 +220,17 @@ def sync_github(req: SyncRequest, x_github_token: Optional[str] = Header(None)):
     workflows_normalized = []
     runs_normalized = []
     
-    # 3 & 4. Fetch Workflows and Runs per repo
-    for repo in filtered_repos:
+    # 3 & 4. Fetch Workflows and Runs per repo CONCURRENTLY
+    import concurrent.futures
+
+    def fetch_repo_data(repo):
         repo_full_name = repo.get("full_name")
         owner = (repo.get("owner") or {}).get("login")
         repo_name = repo.get("name")
+        
+        repo_wfs = []
+        repo_runs = []
+        repo_warnings = []
         
         # Fetch workflows
         try:
@@ -233,10 +239,10 @@ def sync_github(req: SyncRequest, x_github_token: Optional[str] = Header(None)):
                 x_github_token
             )
             for wf in raw_workflows:
-                workflows_normalized.append(normalize_workflow(wf, repo_full_name))
+                repo_wfs.append(normalize_workflow(wf, repo_full_name))
         except Exception as e:
             logger.error(f"GitHub sync: error fetching workflows for {repo_full_name}: {e}")
-            warnings.append({"message": f"Could not fetch workflows for {repo_full_name}"})
+            repo_warnings.append({"message": f"Could not fetch workflows for {repo_full_name}"})
         
         # Fetch runs (limit pages per repo to avoid rate limits)
         try:
@@ -246,10 +252,24 @@ def sync_github(req: SyncRequest, x_github_token: Optional[str] = Header(None)):
                 max_pages=2
             )
             for r in raw_runs:
-                runs_normalized.append(normalize_run(r, repo_full_name, owner))
+                repo_runs.append(normalize_run(r, repo_full_name, owner))
         except Exception as e:
             logger.error(f"GitHub sync: error fetching runs for {repo_full_name}: {e}")
-            warnings.append({"message": f"Could not fetch workflow runs for {repo_full_name}"})
+            repo_warnings.append({"message": f"Could not fetch workflow runs for {repo_full_name}"})
+            
+        return repo_wfs, repo_runs, repo_warnings
+
+    # Use a ThreadPool to fetch all repos in parallel (max 15 concurrent to avoid rate limits)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        futures = {executor.submit(fetch_repo_data, repo): repo for repo in filtered_repos}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                repo_wfs, repo_runs, repo_warnings = future.result()
+                workflows_normalized.extend(repo_wfs)
+                runs_normalized.extend(repo_runs)
+                warnings.extend(repo_warnings)
+            except Exception as e:
+                logger.error(f"GitHub sync parallel error: {e}")
 
     logger.info(f"GitHub sync: workflows fetched = {len(workflows_normalized)}")
     logger.info(f"GitHub sync: workflow runs fetched = {len(runs_normalized)}")
