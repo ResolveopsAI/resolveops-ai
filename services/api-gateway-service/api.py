@@ -3101,6 +3101,42 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
         except Exception:
             pass
 
+    # 6. Generate Time Series Data for Graphs
+    import random
+    
+    # 7-day mock for GitHub Workflows
+    github_pipeline_series = []
+    base_date = datetime.datetime.utcnow() - datetime.timedelta(days=6)
+    for i in range(7):
+        day = base_date + datetime.timedelta(days=i)
+        github_pipeline_series.append({
+            "date": day.strftime("%b %d"),
+            "success": random.randint(20, 50) if github_connected else 0,
+            "failed": random.randint(0, 8) if github_connected else 0
+        })
+
+    # 24-hour mock for AWS Anomalies
+    aws_anomaly_series = []
+    base_hour = datetime.datetime.utcnow() - datetime.timedelta(hours=23)
+    for i in range(24):
+        hour = base_hour + datetime.timedelta(hours=i)
+        aws_anomaly_series.append({
+            "time": hour.strftime("%H:00"),
+            "errors": random.randint(0, 15) if aws_connected else 0,
+            "latency": random.randint(50, 300) if aws_connected else 0
+        })
+        
+    # 24-hour mock for System Resource Utilization
+    system_resource_series = []
+    for i in range(24):
+        hour = base_hour + datetime.timedelta(hours=i)
+        system_resource_series.append({
+            "time": hour.strftime("%H:00"),
+            "api_gateway": random.randint(20, 60),
+            "ai_rca": random.randint(40, 85),
+            "database": random.randint(10, 40)
+        })
+
     return {
         "status": "success",
         "generated_at": timestamp,
@@ -3123,6 +3159,11 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
         },
         "services": services_list,
         "incidents": all_incidents[:10],
+        "time_series": {
+            "github": github_pipeline_series,
+            "aws": aws_anomaly_series,
+            "system": system_resource_series
+        }
     }
 
 @app.api_route("/api/v1/aws/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
