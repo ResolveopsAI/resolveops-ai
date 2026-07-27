@@ -125,7 +125,9 @@ def normalize_run(r: dict, repo_full_name: str, owner: str) -> dict:
         "created_at": r.get("created_at", ""),
         "updated_at": r.get("updated_at", ""),
         "html_url": r.get("html_url", ""),
-        "logs_available": True
+        "logs_available": True,
+        "commit_message": r.get("head_commit", {}).get("message", "").split("\n")[0] if r.get("head_commit") else "",
+        "commit_author": r.get("head_commit", {}).get("author", {}).get("name", "") if r.get("head_commit") else ""
     }
 
 @app.get("/health")

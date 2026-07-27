@@ -60,9 +60,11 @@ async def github_get_failed_workflow_evidence(repository: Optional[str] = None, 
                         resource=f"{run.get('repository', repository)}/{run.get('workflow_name')}",
                         evidence_type="pipeline_failure",
                         summary=(
-                            f"Workflow '{run.get('workflow_name')}' failed "
-                            f"on branch {run.get('head_branch', 'unknown')} "
-                            f"at {run.get('updated_at', run.get('created_at', 'unknown'))}"
+                            f"Repo: {run.get('repository', repository)}\n"
+                            f"Workflow: '{run.get('workflow_name')}' (Run #{run.get('run_number', 'unknown')})\n"
+                            f"Branch: {run.get('branch', run.get('head_branch', 'unknown'))}\n"
+                            f"Commit: '{run.get('commit_message', 'No message')}' by {run.get('commit_author', 'unknown')}\n"
+                            f"Failed at: {run.get('updated_at', run.get('created_at', 'unknown'))}"
                         ),
                     ))
             log_tool_call("github_get_failed_workflow_evidence", {"repository": repository, "workflow_run_id": workflow_run_id}, True, (time.time() - start_time) * 1000)
