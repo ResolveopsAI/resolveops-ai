@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { fetchApi } from "@/lib/api";
-import { 
-  Cloud, Box, GitBranch, ShieldAlert, Activity, DollarSign, 
+import {
+  Cloud, Box, GitBranch, ShieldAlert, Activity, DollarSign,
   AlertTriangle, CheckCircle, Server, RefreshCw, ChevronRight,
-  Cpu, Database, Network, Key, Zap
+  Cpu, Database, Network, Key, Zap, TrendingUp, ArrowUpRight
 } from "lucide-react";
 import Link from "next/link";
 
@@ -16,8 +16,8 @@ export default function GlobalDashboard() {
   const [loading, setLoading] = useState(true);
   const [integrations, setIntegrations] = useState({});
   const [stats, setStats] = useState({
-    aws: 0, azure: 0, 
-    incidents: 0, risks: 0, cost: "$0.00", 
+    aws: 0, azure: 0,
+    incidents: 0, risks: 0, cost: null,
     failures: 0, health: "100%"
   });
   const [deployments, setDeployments] = useState([]);
@@ -31,343 +31,334 @@ export default function GlobalDashboard() {
       fetchApi("/api/v1/cloud/azure/cost").catch(() => ({}))
     ]).then(([integData, resData, depData, costData]) => {
       setIntegrations(integData);
-      
-      const awsCount = Array.isArray(resData) ? resData.filter(r => r.provider === "AWS").length : 0;
+      const awsCount   = Array.isArray(resData) ? resData.filter(r => r.provider === "AWS").length   : 0;
       const azureCount = Array.isArray(resData) ? resData.filter(r => r.provider === "Azure").length : 0;
-      
       const failedPipelines = Array.isArray(depData) ? depData.filter(d => d.conclusion === "failure").length : 0;
-      setDeployments(Array.isArray(depData) ? depData.slice(0, 3) : []);
-
-      setStats({ 
-        aws: awsCount, 
-        azure: azureCount,
-        incidents: 0, // In reality, fetch from an incidents API
-        risks: 0,     // In reality, fetch from a risks API
+      setDeployments(Array.isArray(depData) ? depData.slice(0, 4) : []);
+      setStats({
+        aws: awsCount, azure: azureCount,
+        incidents: 0, risks: 0,
         cost: costData && !costData.error ? costData : null,
         failures: failedPipelines,
         health: failedPipelines > 0 ? "92.0%" : "100%"
       });
-      
       setLoading(false);
     });
   };
 
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) { router.push("/login"); return; }
     fetchData();
   }, [router]);
 
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
           <div className="relative">
-            <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-50 rounded-full animate-pulse"></div>
-            <Activity className="animate-spin text-indigo-400 w-12 h-12 relative z-10" />
+            <div className="w-16 h-16 rounded-full border border-sky-500/20 flex items-center justify-center">
+              <Activity className="text-sky-400 w-7 h-7 animate-spin" />
+            </div>
+            <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-xl animate-pulse" />
           </div>
-          <p className="text-slate-400 font-mono text-sm tracking-widest uppercase">Initializing ResolveOps AI Core...</p>
+          <div className="text-center">
+            <p className="text-slate-200 font-semibold text-sm">Initializing Command Center</p>
+            <p className="text-slate-500 text-xs font-mono mt-1 tracking-wider">LOADING TELEMETRY...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  const isAwsConnected = !!integrations.aws;
-  const isAzureConnected = !!integrations.azure;
+  const isAwsConnected    = !!integrations.aws;
+  const isAzureConnected  = !!integrations.azure;
   const isGithubConnected = !!integrations.github;
-  const totalConnected = [isAwsConnected, isAzureConnected, isGithubConnected].filter(Boolean).length;
-  const totalResources = stats.aws + stats.azure;
+  const totalConnected    = [isAwsConnected, isAzureConnected, isGithubConnected].filter(Boolean).length;
+  const totalResources    = stats.aws + stats.azure;
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full font-sans pb-10 space-y-8 animate-in fade-in duration-500">
-        
-        {/* Hero Section */}
-        <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-800/80 p-8 lg:p-10">
-          <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-indigo-600/10 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-emerald-600/10 rounded-full blur-[80px] -ml-20 -mb-20 pointer-events-none"></div>
-          
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <div className="flex flex-col gap-5 pb-10 animate-in fade-in duration-500">
+
+        {/* ── Hero ───────────────────────────────────────────────── */}
+        <div className="relative rounded-2xl overflow-hidden p-7 lg:p-9"
+          style={{
+            background: "linear-gradient(135deg, #0d1a2d 0%, #0b1525 60%, #0d1220 100%)",
+            border: "1px solid rgba(56,189,248,0.12)",
+            boxShadow: "0 0 60px rgba(56,189,248,0.06), 0 4px 30px rgba(0,0,0,0.4)"
+          }}>
+          {/* Background grid + glow orbs */}
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: "radial-gradient(rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
+          {/* Top border glow */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-bold uppercase tracking-wider rounded-full border border-indigo-500/20 mb-4">
-                <Zap size={12} className="text-indigo-400" /> System Online
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4"
+                style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                All Systems Nominal
               </div>
-              <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-4 tracking-tight">
-                ResolveOps AI Command Center
+              <h1 className="text-3xl lg:text-4xl font-black tracking-tight mb-3 gradient-text-white">
+                ResolveOps AI
+                <span className="text-sky-400 ml-2 text-2xl font-light opacity-70">Command Center</span>
               </h1>
-              <p className="text-lg text-slate-400 max-w-2xl leading-relaxed">
-                Monitor Kubernetes, Azure, AWS, GitHub Actions, Docker containers, costs, risks, and incidents from one AI-powered SRE platform.
+              <p className="text-sm text-slate-400 max-w-xl leading-relaxed">
+                Unified SRE intelligence across Kubernetes, Azure, AWS, GitHub Actions, and Docker.
+                AI-powered incident resolution, cost analysis, and pipeline diagnostics.
               </p>
             </div>
-            <button 
-              onClick={fetchData}
-              className="bg-white/5 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all border border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md"
-            >
-              <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Sync Telemetry
+            <button onClick={fetchData}
+              className="btn-ghost shrink-0 group">
+              <RefreshCw size={15} className={`${loading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} text-sky-400`} />
+              Sync Telemetry
             </button>
           </div>
         </div>
 
-        {/* Global Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <StatCard title="Platform Health" value={stats.health} icon={<Activity />} color="emerald" />
-          <StatCard title="Connected Orgs" value={totalConnected} icon={<Network />} color="indigo" />
-          <StatCard title="Total Resources" value={totalResources} icon={<Server />} color="sky" />
-          <StatCard title="Critical Risks" value={stats.risks} icon={<ShieldAlert />} color="amber" alert={stats.risks > 0} />
-          <StatCard title="Failed Pipelines" value={stats.failures} icon={<AlertTriangle />} color="rose" alert={stats.failures > 0} />
-          <CostCard costData={stats.cost} />
+        {/* ── Stat Cards ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricCard title="System Health" value={stats.health} icon={<Activity size={16}/>} color="emerald" pulse />
+          <MetricCard title="Connected Orgs" value={`${totalConnected}/3`} icon={<Network size={16}/>} color="sky" />
+          <MetricCard title="Resources" value={totalResources} icon={<Server size={16}/>} color="indigo" />
+          <MetricCard title="Active Risks" value={stats.risks} icon={<ShieldAlert size={16}/>} color="amber" alert={stats.risks > 0} />
+          <MetricCard title="Failed Pipelines" value={stats.failures} icon={<AlertTriangle size={16}/>} color="rose" alert={stats.failures > 0} />
+          <CostMetricCard costData={stats.cost} />
         </div>
 
-        {/* Platform Cards */}
-        <h2 className="text-xl font-bold text-white pt-4 tracking-wide flex items-center gap-2">
-          <Database size={20} className="text-indigo-500" /> Infrastructure Integrations
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <PlatformCard 
-            title="Microsoft Azure"
-            desc="Actively monitoring Resource Groups, VMs, and Subnets."
-            icon={<Cloud size={28} />}
-            color="sky"
-            isConnected={isAzureConnected}
-            stats={`${stats.azure} Resources`}
-            href="/azure"
+        {/* ── Platform Cards ─────────────────────────────────────── */}
+        <div className="flex items-center gap-2 pt-1">
+          <div className="w-1 h-4 rounded-full bg-sky-400" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Infrastructure Integrations</h2>
+          <div className="flex-1 h-px bg-white/5 ml-2" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <PlatformCard
+            title="Microsoft Azure" desc="VMs, Resource Groups, AKS, Cost Analytics"
+            icon={<Cloud size={22}/>} color="sky"
+            isConnected={isAzureConnected} stats={`${stats.azure} Resources`} href="/azure"
           />
-          <PlatformCard 
-            title="Amazon Web Services"
-            desc="Actively monitoring Regions, VPCs, EC2, and RDS."
-            icon={<Box size={28} />}
-            color="amber"
-            isConnected={isAwsConnected}
-            stats={`${stats.aws} Resources`}
-            href="/aws"
+          <PlatformCard
+            title="Amazon Web Services" desc="EC2, RDS, VPCs, CloudWatch, Cost Explorer"
+            icon={<Box size={22}/>} color="amber"
+            isConnected={isAwsConnected} stats={`${stats.aws} Resources`} href="/aws"
           />
-          <PlatformCard 
-            title="GitHub Actions"
-            desc="Synchronizing CI/CD pipeline telemetry and logs."
-            icon={<GitBranch size={28} />}
-            color="purple"
-            isConnected={isGithubConnected}
-            stats={`${deployments.length} Recent Syncs`}
-            href="/github"
+          <PlatformCard
+            title="GitHub Actions" desc="CI/CD pipelines, workflow runs, RCA engine"
+            icon={<GitBranch size={22}/>} color="violet"
+            isConnected={isGithubConnected} stats={`${deployments.length} Recent Runs`} href="/github"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Bottom 2-col ───────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
           {/* AI Recommendations */}
-          <div className="lg:col-span-2 glass-panel border border-slate-800/80 rounded-2xl p-6 flex flex-col relative overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Zap size={18} className="text-indigo-400" /> AI Recommendations
+          <div className="lg:col-span-2 glass-panel rounded-2xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/20 to-transparent" />
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20">
+                  <Zap size={14} className="text-sky-400" />
+                </div>
+                AI Recommendations
               </h3>
-              <span className="bg-slate-800 text-slate-400 px-2.5 py-1 rounded text-[10px] font-bold uppercase border border-slate-700">Demo Data</span>
+              <span className="badge-neutral px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Preview</span>
             </div>
-            
-            <div className="space-y-4 opacity-60">
-              <RecommendationRow 
-                type="risk"
-                title="Potential CPU Exhaustion detected in Azure VMSS"
-                desc="Historical data predicts VMSS-WebTier will hit 95% CPU during peak hours tomorrow. Recommend scaling up instance size."
-              />
-              <RecommendationRow 
-                type="cost"
-                title="Unattached EBS Volumes in AWS"
-                desc="Found 3 unattached volumes in us-east-1. Deleting them will save ~$45/month."
-              />
-              <RecommendationRow 
-                type="security"
-                title="Permissive NSG Rule"
-                desc="Azure NSG 'App-Security-Group' allows Any/Any inbound on port 22. Highly recommend restricting to known IPs."
-              />
+            <div className="space-y-3 opacity-70">
+              <RecommendRow type="risk" title="CPU Exhaustion — Azure VMSS" desc="VMSS-WebTier predicted to hit 95% CPU during peak hours. Recommend vertical scaling." />
+              <RecommendRow type="cost" title="Unattached EBS Volumes — AWS" desc="3 unattached volumes in us-east-1 found. Deleting saves ~$45/month." />
+              <RecommendRow type="security" title="Permissive NSG Rule" desc="NSG 'App-Security-Group' allows Any/Any on port 22. Restrict to known IPs." />
             </div>
           </div>
 
-          {/* Recent Pipeline Activity */}
-          <div className="glass-panel border border-slate-800/80 rounded-2xl p-6 flex flex-col relative overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Activity size={18} className="text-slate-400" /> Pipeline Activity
+          {/* Pipeline Activity */}
+          <div className="glass-panel rounded-2xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <Activity size={14} className="text-slate-400" />
+                </div>
+                Pipeline Activity
               </h3>
             </div>
-            
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {deployments.length > 0 ? deployments.map((dep, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                  {dep.conclusion === "failure" ? 
-                    <AlertTriangle size={16} className="text-rose-500 mt-1 flex-shrink-0" /> : 
-                    <CheckCircle size={16} className="text-emerald-500 mt-1 flex-shrink-0" />
-                  }
-                  <div>
-                    <p className="text-sm font-semibold text-slate-200 line-clamp-1">{dep.repository}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{dep.workflow_name} - {dep.commit_msg}</p>
+                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors">
+                  {dep.conclusion === "failure"
+                    ? <AlertTriangle size={14} className="text-rose-400 mt-0.5 shrink-0" />
+                    : <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />}
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-200 truncate">{dep.repository}</p>
+                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{dep.workflow_name}</p>
                   </div>
                 </div>
               )) : (
-                <div className="text-center p-6 bg-white/[0.02] rounded-xl border border-white/[0.05]">
-                  <p className="text-sm text-slate-500">No recent pipeline activity.</p>
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Activity size={28} className="text-slate-700 mb-3" />
+                  <p className="text-xs text-slate-500">No recent pipeline activity</p>
                 </div>
               )}
-              <Link href="/github" className="flex items-center justify-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 mt-4 pt-2 border-t border-slate-800">
-                View All Activity <ChevronRight size={14} />
+              <Link href="/github" className="flex items-center justify-center gap-1 text-[11px] font-semibold text-sky-400 hover:text-sky-300 mt-2 pt-3 border-t border-white/[0.05] transition-colors">
+                View All Pipelines <ArrowUpRight size={12} />
               </Link>
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </DashboardLayout>
   );
 }
 
-// Sub-components for cleaner code
-function StatCard({ title, value, icon, color, alert = false }) {
-  const colorMap = {
-    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-    indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-    sky: "text-sky-400 bg-sky-500/10 border-sky-500/20",
-    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    rose: "text-rose-400 bg-rose-500/10 border-rose-500/20",
-    slate: "text-slate-400 bg-slate-500/10 border-slate-500/20",
+/* ─── Sub-components ───────────────────────────────────── */
+
+function MetricCard({ title, value, icon, color, alert = false, pulse = false }) {
+  const colorStyles = {
+    emerald: { text: "#10b981", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)" },
+    sky:     { text: "#38bdf8", bg: "rgba(56,189,248,0.08)", border: "rgba(56,189,248,0.2)" },
+    indigo:  { text: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.2)" },
+    amber:   { text: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
+    rose:    { text: "#f43f5e", bg: "rgba(244,63,94,0.08)",  border: "rgba(244,63,94,0.2)"  },
   };
-  
+  const c = colorStyles[color] || colorStyles.sky;
+
   return (
-    <div className={`glass-panel border ${alert ? 'border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-slate-800/80'} rounded-2xl p-5 flex flex-col justify-between`}>
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 rounded-lg ${colorMap[color]} border`}>
+    <div className={`glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all hover:scale-[1.02] ${alert ? "border-rose-500/25" : ""}`}
+      style={alert ? { boxShadow: "0 0 20px rgba(244,63,94,0.08)" } : {}}>
+      <div className="flex justify-between items-start mb-3">
+        <div className="p-2 rounded-lg" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
           {icon}
         </div>
-        {alert && <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>}
+        {pulse && <div className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" style={{ color: "#10b981" }} />}
+        {alert && <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />}
       </div>
       <div>
-        <p className="text-3xl font-black text-white mb-1 tracking-tight">{value}</p>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-black text-white tracking-tight mb-0.5">{value}</p>
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{title}</p>
       </div>
     </div>
   );
 }
 
 function PlatformCard({ title, desc, icon, color, isConnected, stats, href }) {
-  const colorMap = {
-    sky: "text-sky-400 bg-sky-500/10 border-sky-500/20 group-hover:bg-sky-500",
-    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20 group-hover:bg-amber-500",
-    purple: "text-purple-400 bg-purple-500/10 border-purple-500/20 group-hover:bg-purple-500",
+  const colorStyles = {
+    sky:    { text: "#38bdf8", bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.2)",  hoverBorder: "rgba(56,189,248,0.35)"  },
+    amber:  { text: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)",  hoverBorder: "rgba(245,158,11,0.35)"  },
+    violet: { text: "#a78bfa", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.2)", hoverBorder: "rgba(167,139,250,0.35)" },
   };
-  
-  const borderMap = {
-    sky: "hover:border-sky-500/50",
-    amber: "hover:border-amber-500/50",
-    purple: "hover:border-purple-500/50",
-  };
+  const c = colorStyles[color] || colorStyles.sky;
 
   return (
-    <div className={`glass-panel border border-slate-800/80 rounded-2xl p-6 flex flex-col relative overflow-hidden group ${borderMap[color]} transition-all cursor-default`}>
-      <div className="flex justify-between items-start mb-6">
-        <div className={`p-3 rounded-xl border ${colorMap[color].split(' group-hover')[0]}`}>
+    <div className="glass-panel rounded-2xl p-5 flex flex-col relative overflow-hidden group transition-all duration-200 hover:scale-[1.01]"
+      style={{ "--hover-border": c.hoverBorder }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = c.hoverBorder}
+      onMouseLeave={e => e.currentTarget.style.borderColor = ""}>
+      <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ background: `linear-gradient(90deg, transparent, ${c.text}40, transparent)` }} />
+
+      <div className="flex justify-between items-start mb-5">
+        <div className="p-2.5 rounded-xl" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
           {icon}
         </div>
-        {isConnected ? (
-          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase tracking-wider rounded-full border border-emerald-500/20 shadow-sm">Connected</span>
-        ) : (
-          <span className="px-2.5 py-1 bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-full border border-slate-700">Disconnected</span>
-        )}
+        {isConnected
+          ? <span className="badge-success px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">Connected</span>
+          : <span className="badge-neutral px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">Not configured</span>}
       </div>
-      
-      <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-400 mb-6 flex-1">{desc}</p>
-      
+
+      <h3 className="text-base font-bold text-white mb-1">{title}</h3>
+      <p className="text-[11px] text-slate-400 mb-5 flex-1 leading-relaxed">{desc}</p>
+
       {isConnected ? (
-        <div className="space-y-4">
-          <div className="px-3 py-2 bg-white/[0.03] rounded-lg border border-white/[0.05]">
-            <p className="text-xs font-mono text-slate-300">{stats}</p>
+        <div className="space-y-3">
+          <div className="px-3 py-2 rounded-lg flex items-center gap-2"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: c.text }} />
+            <p className="terminal-text text-slate-300">{stats}</p>
           </div>
-          <Link href={href} className={`w-full flex justify-center items-center gap-2 py-3 ${colorMap[color].split(' group-hover')[0]} rounded-xl font-semibold transition-all group-hover:text-white ${colorMap[color].split(' ')[2]}`}>
-            Enter Hub <ChevronRight size={16} />
+          <Link href={href}
+            className="w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all group-hover:opacity-100"
+            style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
+            Open Hub <ChevronRight size={14} />
           </Link>
         </div>
       ) : (
-        <Link href="/integrations" className="w-full flex justify-center items-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold transition-colors border border-slate-700">
-          <Key size={16} /> Configure Access
+        <Link href="/integrations"
+          className="w-full flex justify-center items-center gap-2 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <Key size={13} /> Configure Access
         </Link>
       )}
     </div>
   );
 }
 
-function RecommendationRow({ type, title, desc }) {
-  const icon = type === 'risk' ? <Activity size={16} className="text-amber-400" /> : 
-               type === 'cost' ? <DollarSign size={16} className="text-emerald-400" /> : 
-               <ShieldAlert size={16} className="text-rose-400" />;
-               
-  const bg = type === 'risk' ? 'bg-amber-500/10 border-amber-500/20' : 
-             type === 'cost' ? 'bg-emerald-500/10 border-emerald-500/20' : 
-             'bg-rose-500/10 border-rose-500/20';
+function RecommendRow({ type, title, desc }) {
+  const styles = {
+    risk:     { icon: <Activity size={14}/>,     text: "#f59e0b", bg: "rgba(245,158,11,0.08)",  border: "rgba(245,158,11,0.2)"  },
+    cost:     { icon: <DollarSign size={14}/>,   text: "#10b981", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)" },
+    security: { icon: <ShieldAlert size={14}/>,  text: "#f43f5e", bg: "rgba(244,63,94,0.08)",  border: "rgba(244,63,94,0.2)"  },
+  };
+  const s = styles[type] || styles.risk;
 
   return (
-    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors flex gap-4 items-start">
-      <div className={`p-2 rounded-lg border mt-0.5 ${bg}`}>
-        {icon}
+    <div className="flex gap-3 items-start p-3.5 rounded-xl hover:bg-white/[0.025] transition-colors"
+      style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.04)" }}>
+      <div className="p-1.5 rounded-lg mt-0.5 shrink-0"
+        style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.text }}>
+        {s.icon}
       </div>
       <div>
-        <h4 className="text-sm font-bold text-slate-200 mb-1">{title}</h4>
-        <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
+        <h4 className="text-xs font-semibold text-slate-200 mb-0.5">{title}</h4>
+        <p className="text-[11px] text-slate-500 leading-relaxed">{desc}</p>
       </div>
     </div>
   );
 }
 
-function CostCard({ costData }) {
-  if (!costData || !costData.subscription_cost) {
+function CostMetricCard({ costData }) {
+  if (!costData?.subscription_cost) {
     return (
-      <div className="glass-panel border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between">
-        <div className="flex justify-between items-start mb-4">
-          <div className="p-2 rounded-lg text-slate-400 bg-slate-500/10 border border-slate-500/20">
-            <DollarSign size={20} />
+      <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <div className="mb-3">
+          <div className="p-2 rounded-lg w-fit bg-slate-500/10 border border-slate-500/20 text-slate-400">
+            <DollarSign size={16} />
           </div>
         </div>
         <div>
-          <p className="text-3xl font-black text-white mb-1 tracking-tight">$0.00</p>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Est. Cloud Cost</p>
+          <p className="text-2xl font-black text-white tracking-tight mb-0.5">$0.00</p>
+          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Cloud Cost MTD</p>
         </div>
       </div>
     );
   }
-
   const sub = costData.subscription_cost;
-  const isPermissionReq = sub.status === "permission_required";
-  
+  const isPermReq = sub.status === "permission_required";
   return (
-    <div className="glass-panel border border-sky-500/30 shadow-[0_0_15px_rgba(14,165,233,0.1)] rounded-2xl p-4 flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-2">
-        <div className="p-2 rounded-lg text-sky-400 bg-sky-500/10 border border-sky-500/20">
-          <DollarSign size={20} />
+    <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
+      style={{ border: "1px solid rgba(56,189,248,0.15)", boxShadow: "0 0 20px rgba(56,189,248,0.05)" }}>
+      <div className="flex justify-between items-start mb-3">
+        <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
+          <DollarSign size={16} />
         </div>
-        {isPermissionReq ? (
-          <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-            <ShieldAlert size={10} /> Permission Required
-          </span>
-        ) : (
-          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-            <CheckCircle size={10} /> Actual
-          </span>
-        )}
+        {isPermReq
+          ? <span className="badge-danger px-2 py-0.5 rounded text-[9px] font-bold">N/A</span>
+          : <span className="badge-success px-2 py-0.5 rounded text-[9px] font-bold">Live</span>}
       </div>
       <div>
-        {isPermissionReq ? (
-          <p className="text-sm font-bold text-slate-400 mb-1 leading-tight">Unavailable</p>
-        ) : (
-          <p className="text-2xl font-black text-white mb-1 tracking-tight">
-            {sub.currency_symbol}{sub.month_to_date_actual.toLocaleString(undefined, {minimumFractionDigits: 2})}
-          </p>
-        )}
-        <div className="flex justify-between items-end mt-1">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Month-to-Date Cost</p>
-          <p className="text-[9px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded uppercase border border-sky-500/20">{sub.currency}</p>
-        </div>
+        {isPermReq
+          ? <p className="text-base font-bold text-slate-400 mb-0.5">Unavailable</p>
+          : <p className="text-2xl font-black text-white tracking-tight mb-0.5">
+              {sub.currency_symbol}{sub.month_to_date_actual?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </p>}
+        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Cloud Cost MTD</p>
       </div>
     </div>
   );
 }
-

@@ -2,18 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fetchApi } from "@/lib/api";
-import { Mail, ShieldCheck, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import {
+  Mail, ShieldCheck, ArrowRight, Eye, EyeOff, CheckCircle2,
+  Activity, GitBranch, Cloud, Server, Zap, Lock, User
+} from "lucide-react";
 
-// ─── Registration: Two-step OTP flow ─────────────────────────────────────────
+/* ─── Logo mark ─────────────────────────────────────────── */
+const LogoMark = ({ size = 40 }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+    <rect width="40" height="40" rx="10" fill="url(#llg)" />
+    <path d="M11 20l6 6 12-12" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="20" cy="20" r="9" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" fill="none"/>
+    <defs>
+      <linearGradient id="llg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#0ea5e9"/>
+        <stop offset="1" stopColor="#6366f1"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
+/* ─── Shared input style ─────────────────────────────────── */
+const inputCls = `w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200
+  placeholder:text-slate-600 bg-[#0d1425] border border-white/[0.08]
+  focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/25
+  transition-all duration-150`;
+
+/* ─── Register flow ─────────────────────────────────────── */
 function RegisterForm() {
   const router = useRouter();
   const [step, setStep] = useState("details");
@@ -24,163 +40,86 @@ function RegisterForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   const handleRequestOtp = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault(); setError(""); setLoading(true);
     try {
-      await fetchApi("/request-otp", {
-        method: "POST",
-        body: JSON.stringify({ email: regEmail, full_name: fullName }),
-      });
-      setSuccess(`OTP sent to ${regEmail}. Check your inbox!`);
+      await fetchApi("/request-otp", { method: "POST", body: JSON.stringify({ email: regEmail, full_name: fullName }) });
+      setSuccess(`OTP sent to ${regEmail}`);
       setStep("otp");
-    } catch (err) {
-      setError(err.message || "Failed to send OTP.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message || "Failed to send OTP."); }
+    finally { setLoading(false); }
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault(); setError(""); setLoading(true);
     try {
-      await fetchApi("/register", {
-        method: "POST",
-        body: JSON.stringify({
-          email: regEmail,
-          password: regPassword,
-          full_name: fullName,
-          otp_code: otpCode,
-        }),
-      });
-      // Auto-login after registration
-      const loginData = await fetchApi("/login", {
-        method: "POST",
-        body: JSON.stringify({ email: regEmail, password: regPassword }),
-      });
-      if (loginData.token) {
-        localStorage.setItem("jwt_token", loginData.token);
-        router.push("/");
-      }
-    } catch (err) {
-      setError(err.message || "Registration failed.");
-    } finally {
-      setLoading(false);
-    }
+      await fetchApi("/register", { method: "POST", body: JSON.stringify({ email: regEmail, password: regPassword, full_name: fullName, otp_code: otpCode }) });
+      const loginData = await fetchApi("/login", { method: "POST", body: JSON.stringify({ email: regEmail, password: regPassword }) });
+      if (loginData.token) { localStorage.setItem("jwt_token", loginData.token); router.push("/"); }
+    } catch (err) { setError(err.message || "Registration failed."); }
+    finally { setLoading(false); }
   };
 
   return (
     <>
-      {error && (
-        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive-foreground mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 mb-4">
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
+      {error   && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm mb-4">{error}</div>}
+      {success && <div className="px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-4">{success}</div>}
+
+      {/* Step indicators */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step === "otp" ? "bg-emerald-500 text-white" : "bg-sky-500 text-white"}`}>
+          {step === "otp" ? "✓" : "1"}
+        </div>
+        <div className={`flex-1 h-px transition-colors ${step === "otp" ? "bg-sky-500/50" : "bg-white/10"}`} />
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step === "otp" ? "bg-sky-500 text-white" : "bg-white/10 text-slate-500"}`}>
+          2
+        </div>
+      </div>
 
       {step === "details" && (
         <form onSubmit={handleRequestOtp} className="space-y-4">
-          {/* Step indicator */}
-          <div className="flex items-center space-x-2 mb-6">
-            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white">1</div>
-            <div className="flex-1 h-0.5 bg-slate-800"></div>
-            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-500">2</div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Full Name</label>
+            <input className={inputCls} placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} required />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="reg-name">Full Name</Label>
-            <Input
-              id="reg-name"
-              placeholder="Enter name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="bg-background/50 border-border"
-            />
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Work Email</label>
+            <input className={inputCls} type="email" placeholder="admin@company.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="reg-email">Work Email</Label>
-            <Input
-              id="reg-email"
-              type="email"
-              placeholder="admin@company.com"
-              value={regEmail}
-              onChange={(e) => setRegEmail(e.target.value)}
-              required
-              className="bg-background/50 border-border"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reg-password">Password</Label>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
             <div className="relative">
-              <Input
-                id="reg-password"
-                type={showRegPassword ? "text" : "password"}
-                placeholder="Min. 8 characters"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                required
-                className="bg-background/50 border-border pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowRegPassword(!showRegPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-              >
-                {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              <input className={inputCls + " pr-10"} type={showPw ? "text" : "password"} placeholder="Min. 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} required />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
               </button>
             </div>
           </div>
-          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500" disabled={loading}>
-            {loading ? "Sending OTP..." : <span className="flex items-center justify-center gap-2"><Mail size={16} /> Send Verification Code <ArrowRight size={16} /></span>}
-          </Button>
+          <button type="submit" disabled={loading}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            style={{ boxShadow: "0 0 30px rgba(56,189,248,0.25)" }}>
+            {loading ? "Sending..." : <><Mail size={15}/> Send Verification Code <ArrowRight size={15}/></>}
+          </button>
         </form>
       )}
 
       {step === "otp" && (
         <form onSubmit={handleRegister} className="space-y-4">
-          <div className="flex items-center space-x-2 mb-6">
-            <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-white">✓</div>
-            <div className="flex-1 h-0.5 bg-indigo-500"></div>
-            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white">2</div>
+          <p className="text-center text-sm text-slate-400">Enter the 6-digit code sent to <br/><span className="text-white font-semibold">{regEmail}</span></p>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Verification Code</label>
+            <input className={inputCls + " text-center text-2xl font-mono tracking-[0.5em]"} placeholder="000000"
+              value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))} maxLength={6} required />
           </div>
-
-          <div className="text-center mb-4">
-            <p className="text-sm text-slate-400">Enter the 6-digit code sent to</p>
-            <p className="text-white font-medium">{regEmail}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="otp">Verification Code</Label>
-            <Input
-              id="otp"
-              placeholder="123456"
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              maxLength={6}
-              className="bg-background/50 border-border text-center text-2xl font-mono tracking-[0.5em]"
-              required
-            />
-          </div>
-
-          <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500" disabled={loading}>
-            {loading ? "Creating Account..." : <span className="flex items-center justify-center gap-2"><ShieldCheck size={16} /> Verify & Create Account</span>}
-          </Button>
-
-          <button
-            type="button"
-            onClick={() => { setStep("details"); setError(""); setSuccess(""); }}
-            className="w-full text-slate-500 hover:text-slate-300 text-sm transition-colors"
-          >
+          <button type="submit" disabled={loading}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            style={{ boxShadow: "0 0 30px rgba(56,189,248,0.25)" }}>
+            {loading ? "Creating Account..." : <><ShieldCheck size={15}/> Verify & Create Account</>}
+          </button>
+          <button type="button" onClick={() => { setStep("details"); setError(""); setSuccess(""); }}
+            className="w-full text-slate-500 hover:text-slate-300 text-sm transition-colors text-center">
             ← Change email or resend OTP
           </button>
         </form>
@@ -189,154 +128,163 @@ function RegisterForm() {
   );
 }
 
-// ─── Main Login Page ──────────────────────────────────────────────────────────
-
+/* ─── Main Login Page ───────────────────────────────────── */
 export default function LoginPage() {
   const router = useRouter();
+  const [tab, setTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault(); setError(""); setLoading(true);
     try {
-      const data = await fetchApi("/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      if (data.token) {
-        localStorage.setItem("jwt_token", data.token);
-        router.push("/");
-      }
-    } catch (err) {
-      setError(err.message || "Invalid credentials.");
-    } finally {
-      setLoading(false);
-    }
+      const data = await fetchApi("/login", { method: "POST", body: JSON.stringify({ email, password }) });
+      if (data.token) { localStorage.setItem("jwt_token", data.token); router.push("/"); }
+    } catch (err) { setError(err.message || "Invalid credentials."); }
+    finally { setLoading(false); }
   };
 
   const features = [
-    "AI Root Cause Analysis",
-    "GitHub Pipeline Intelligence",
-    "Azure and AWS Resource Intelligence",
-    "Cost and Risk Insights",
-    "Architecture Diagram Generation"
+    { icon: <Activity size={16}/>, text: "AI Root Cause Analysis" },
+    { icon: <GitBranch size={16}/>, text: "GitHub Pipeline Intelligence" },
+    { icon: <Cloud size={16}/>, text: "Azure & AWS Resource Intelligence" },
+    { icon: <Zap size={16}/>, text: "Predictive Cost & Risk Insights" },
+    { icon: <Server size={16}/>, text: "Architecture Diagram Generation" },
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#0f172a] text-slate-200">
-      
-      {/* Left Panel - Hero/Branding */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-center p-12 lg:p-24 relative overflow-hidden bg-gradient-to-br from-indigo-900/40 via-background to-[#020617] border-r border-slate-800/50">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-        
-        {/* Glow Effects */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500/20 rounded-full blur-[100px]"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-[120px]"></div>
-        
-        <div className="relative z-10 space-y-8 max-w-lg">
-          <Image src="/resolveops-logo.svg" alt="ResolveOps AI" width={250} height={60} className="mb-4" />
-          
-          <div className="space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
-              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">ResolveOps AI</span>
-            </h1>
-            <p className="text-lg text-slate-400 leading-relaxed">
-              Your AI-powered autonomous SRE command center for cloud, pipeline, cost, and incident intelligence.
-            </p>
+    <div className="flex min-h-screen" style={{ background: "#06091a" }}>
+
+      {/* ── Left branding panel ── */}
+      <div className="hidden lg:flex w-[45%] flex-col justify-center p-16 relative overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #0a1628 0%, #070d1c 100%)", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
+        {/* Dot grid */}
+        <div className="absolute inset-0 opacity-[0.035]"
+          style={{ backgroundImage: "radial-gradient(rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+        {/* Glow orbs */}
+        <div className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full blur-3xl pointer-events-none"
+          style={{ background: "rgba(56,189,248,0.07)" }} />
+        <div className="absolute bottom-1/4 right-0 w-56 h-56 rounded-full blur-3xl pointer-events-none"
+          style={{ background: "rgba(99,102,241,0.06)" }} />
+        {/* Top accent */}
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.4), transparent)" }} />
+
+        <div className="relative z-10 max-w-sm">
+          <div className="flex items-center gap-3 mb-10">
+            <LogoMark size={42} />
+            <div>
+              <h1 className="font-black text-lg tracking-tight text-white leading-none">ResolveOps AI</h1>
+              <p className="text-[10px] text-sky-400/70 uppercase tracking-[0.2em] font-semibold mt-0.5">Command Center</p>
+            </div>
           </div>
 
-          <div className="space-y-4 pt-4">
-            {features.map((feature, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <CheckCircle2 className="text-indigo-400 w-5 h-5 flex-shrink-0" />
-                <span className="text-slate-300 font-medium">{feature}</span>
+          <h2 className="text-3xl font-black text-white leading-tight mb-3">
+            Autonomous SRE<br/>
+            <span style={{ background: "linear-gradient(135deg,#38bdf8,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+              Intelligence Platform
+            </span>
+          </h2>
+          <p className="text-sm text-slate-400 leading-relaxed mb-10">
+            AI-powered incident resolution, pipeline diagnostics, and cloud intelligence — unified in one command center.
+          </p>
+
+          <div className="space-y-3.5">
+            {features.map((f, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="p-1.5 rounded-lg shrink-0" style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8" }}>
+                  {f.icon}
+                </div>
+                <span className="text-sm text-slate-300 font-medium">{f.text}</span>
               </div>
             ))}
+          </div>
+
+          <div className="mt-12 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-slate-500 font-mono">All systems operational</span>
           </div>
         </div>
       </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-4 lg:p-12 relative bg-[#0B0F19]">
-        <div className="w-full max-w-md space-y-6">
-          <div className="lg:hidden flex justify-center mb-8">
-            <Image src="/resolveops-logo.svg" alt="ResolveOps AI" width={200} height={50} />
+      {/* ── Right form panel ── */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-3 mb-8 lg:hidden">
+            <LogoMark size={36} />
+            <h1 className="font-black text-base text-white">ResolveOps AI</h1>
           </div>
 
-          <Card className="bg-slate-900/60 backdrop-blur-xl border-slate-800 shadow-2xl">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-white text-center">Sign In</CardTitle>
-              <CardDescription className="text-center text-slate-400">Access your command center</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-950 border border-slate-800 rounded-lg p-1">
-                  <TabsTrigger value="login" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white rounded-md transition-all">Login</TabsTrigger>
-                  <TabsTrigger value="register" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white rounded-md transition-all">Register</TabsTrigger>
-                </TabsList>
+          {/* Card */}
+          <div className="rounded-2xl p-7" style={{
+            background: "linear-gradient(180deg, #0d1424 0%, #0a1020 100%)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 0 0 1px rgba(255,255,255,0.02) inset, 0 25px 60px rgba(0,0,0,0.5)"
+          }}>
+            {/* Top border glow */}
+            <div className="absolute top-0 left-0 right-0 h-px rounded-t-2xl"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)" }} />
 
-                <TabsContent value="login" className="mt-0">
-                  <form onSubmit={handleLogin} className="space-y-5">
-                    {error && (
-                      <Alert variant="destructive" className="bg-rose-500/10 border-rose-500/20 text-rose-400">
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-slate-300">Work Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="admin@company.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="password" className="text-slate-300">Password</Label>
-                        <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline">Forgot password?</a>
-                      </div>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                          className="bg-slate-950 border-slate-800 text-slate-200 focus-visible:ring-indigo-500 pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium h-11" disabled={loading}>
-                      {loading ? "Authenticating..." : "Sign In"}
-                    </Button>
-                  </form>
-                </TabsContent>
+            {/* Tab switcher */}
+            <div className="flex rounded-xl p-1 mb-7" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              {["login", "register"].map(t => (
+                <button key={t} onClick={() => setTab(t)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                    tab === t
+                      ? "bg-sky-500 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}>
+                  {t}
+                </button>
+              ))}
+            </div>
 
-                <TabsContent value="register" className="mt-0">
-                  <RegisterForm />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-          
-          <p className="text-center text-sm text-slate-600">
-            &copy; {new Date().getFullYear()} ResolveOps AI. All rights reserved.
+            {/* Login form */}
+            {tab === "login" && (
+              <form onSubmit={handleLogin} className="space-y-4">
+                {error && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">{error}</div>}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Email</label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
+                    <input className={inputCls + " pl-9"} type="email" placeholder="admin@company.com"
+                      value={email} onChange={e => setEmail(e.target.value)} required />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Password</label>
+                    <a href="#" className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold">Forgot?</a>
+                  </div>
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
+                    <input className={inputCls + " pl-9 pr-10"} type={showPw ? "text" : "password"}
+                      value={password} onChange={e => setPassword(e.target.value)} required />
+                    <button type="button" onClick={() => setShowPw(!showPw)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                      {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" disabled={loading}
+                  className="w-full py-2.5 mt-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+                  style={{ background: loading ? "#0ea5e9" : "linear-gradient(90deg,#0ea5e9,#6366f1)", boxShadow: "0 0 30px rgba(56,189,248,0.2)" }}>
+                  {loading ? "Authenticating..." : "Sign In to Command Center"}
+                </button>
+              </form>
+            )}
+
+            {/* Register form */}
+            {tab === "register" && <RegisterForm />}
+          </div>
+
+          <p className="text-center text-[10px] text-slate-600 mt-5 font-mono">
+            © {new Date().getFullYear()} ResolveOps AI — All rights reserved
           </p>
         </div>
       </div>

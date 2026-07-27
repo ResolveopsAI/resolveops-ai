@@ -141,8 +141,12 @@ export default function GitHubSyncHub() {
         setErrorMsg("GitHub token is invalid or expired.");
       } else if (e.message?.includes("permission") || e.status === 403) {
         setErrorMsg("GitHub token does not have permission to read repositories or Actions workflows.");
+      } else if (e.status === 503 || e.message?.includes("unavailable")) {
+        setErrorMsg("GitHub sync service is temporarily unavailable. Please try again in a moment.");
+      } else if (e.status === 504 || e.message?.includes("timed out")) {
+        setErrorMsg("GitHub sync timed out. Your account may have many repositories — please try again.");
       } else {
-        setErrorMsg(e.message || "Sync failed");
+        setErrorMsg(e.message || "Sync failed. Please check your connection and try again.");
       }
       return false;
     }
@@ -226,14 +230,19 @@ export default function GitHubSyncHub() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
           <div className="relative">
-            <div className="absolute inset-0 bg-purple-500 blur-xl opacity-50 rounded-full animate-pulse"></div>
-            <Activity className="animate-spin text-purple-400 w-12 h-12 relative z-10" />
+            <div className="w-16 h-16 rounded-full border border-sky-500/20 flex items-center justify-center">
+              <Activity className="text-sky-400 w-7 h-7 animate-spin" />
+            </div>
+            <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-xl animate-pulse" />
           </div>
-          <p className="text-slate-400 font-mono text-sm tracking-widest uppercase">
-            {syncing ? "Syncing GitHub Repositories..." : "Initializing GitHub Intelligence..."}
-          </p>
+          <div className="text-center">
+            <p className="text-slate-200 font-semibold text-sm">
+              {syncing ? "Syncing Repositories" : "Initializing GitHub Intelligence"}
+            </p>
+            <p className="text-slate-500 text-xs font-mono mt-1 tracking-wider">CONNECTING TO GITHUB...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -267,157 +276,147 @@ export default function GitHubSyncHub() {
   };
   const activeArray = getActiveArray();
 
+  const selectCls = `bg-[#0d1424] text-slate-200 border border-white/[0.08] rounded-xl px-3.5 py-2
+    text-sm focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/25
+    transition-all duration-150 appearance-none cursor-pointer disabled:opacity-40`;
+
   return (
     <DashboardLayout>
-      <div className="flex flex-col h-full space-y-6 font-sans animate-in fade-in duration-500 pb-10">
-        
-        {/* Header & Connection Status */}
-        <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-800/80 p-8 lg:p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-purple-600/10 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none"></div>
-          
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-400 text-xs font-bold uppercase tracking-wider rounded-full border border-purple-500/20 mb-4">
-              <GitBranch size={12} className="text-purple-400" /> GitHub Sync Hub
-            </div>
-            <h2 className="text-3xl font-bold tracking-wide text-white mb-2 flex items-center gap-3">
-              Repository Intelligence
-              {statusData ? (
-                <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded border border-emerald-500/30 flex items-center gap-1"><CheckCircle size={12}/> Connected</span>
-              ) : (
-                <span className="text-xs bg-rose-500/20 text-rose-400 px-2 py-1 rounded border border-rose-500/30 flex items-center gap-1"><XCircle size={12}/> Not Connected</span>
-              )}
-            </h2>
-            {statusData && (
-              <p className="text-sm text-slate-400 max-w-xl flex items-center gap-2">
-                <User size={14}/> {statusData.username || statusData.name || "GitHub User"}
-              </p>
-            )}
-            {errorMsg && (
-              <p className="text-sm text-rose-400 mt-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded max-w-xl">
-                {errorMsg}
-              </p>
-            )}
-            {warningMsgs.length > 0 && !errorMsg && (
-              <div className="mt-2 space-y-1 max-w-xl">
-                {warningMsgs.map((msg, i) => (
-                  <p key={i} className="text-sm text-amber-400 p-2 bg-amber-500/10 border border-amber-500/20 rounded flex items-center gap-2">
-                    <AlertTriangle size={14} className="shrink-0" /> {msg}
-                  </p>
-                ))}
+      <div className="flex flex-col gap-5 pb-10 animate-in fade-in duration-500">
+
+        {/* ── Hero Header ── */}
+        <div className="relative rounded-2xl overflow-hidden p-6 lg:p-8"
+          style={{
+            background: "linear-gradient(135deg, #0d1a2d 0%, #0b1525 60%, #0d1220 100%)",
+            border: "1px solid rgba(56,189,248,0.12)",
+            boxShadow: "0 0 60px rgba(56,189,248,0.04), 0 4px 30px rgba(0,0,0,0.4)"
+          }}>
+          <div className="absolute inset-0 opacity-[0.025]"
+            style={{ backgroundImage: "radial-gradient(rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none"
+            style={{ background: "rgba(56,189,248,0.04)" }} />
+          <div className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)" }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3"
+                style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
+                <GitBranch size={11} /> GitHub Sync Hub
               </div>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
-            <select
-              value={syncScope}
-              onChange={(e) => {
-                const newScope = e.target.value;
-                setSyncScope(newScope);
-                setRepos([]);
-                setWorkflows([]);
-                setRuns([]);
-                setWarningMsgs([]);
-                setSummary({});
-                setRepoFilter("all");
-                setStatusFilter("all");
-                handleForceSync(newScope);
-              }}
-              disabled={syncing}
-              className="bg-slate-900 text-slate-200 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-purple-500 disabled:opacity-50"
-            >
-              <option value="owned">Owned Repositories</option>
-              <option value="accessible">All Accessible Repositories</option>
-            </select>
-            <button
-              onClick={handleForceSync}
-              disabled={syncing}
-              className="bg-white/5 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all border border-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? "Syncing..." : "Force Sync"}
-            </button>
-          </div>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center" title="Owned GitHub repositories synced">
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><Folder size={12}/> {syncScope === "owned" ? "Owned Repositories" : "Accessible Repositories"}</p>
-            <p className="text-2xl font-bold text-slate-100">{repos.length}</p>
-          </div>
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center" title="GitHub Actions workflow files discovered">
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><Layers size={12}/> Workflows</p>
-            <p className="text-2xl font-bold text-slate-100">{workflows.length}</p>
-          </div>
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center" title="Total workflow execution records retrieved">
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><GitBranch size={12}/> Recent Runs</p>
-            <p className="text-2xl font-bold text-slate-100">{runs.length}</p>
-          </div>
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center bg-rose-500/5">
-            <p className="text-[10px] text-rose-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><XCircle size={12}/> Failed</p>
-            <p className="text-2xl font-bold text-rose-100">{summary?.failed || 0}</p>
-          </div>
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center bg-emerald-500/5">
-            <p className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><CheckCircle size={12}/> Success</p>
-            <p className="text-2xl font-bold text-emerald-100">{summary?.success || 0}</p>
-          </div>
-          <div className="glass-panel p-5 rounded-xl border border-slate-700/50 flex flex-col justify-center bg-amber-500/5">
-            <p className="text-[10px] text-amber-400 uppercase tracking-widest font-bold mb-1 flex items-center gap-1"><Activity size={12}/> In Progress</p>
-            <p className="text-2xl font-bold text-amber-100">{summary?.in_progress || 0}</p>
-          </div>
-        </div>
-
-        {/* Tabs & Filters */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 glass-panel p-3 rounded-2xl border border-slate-800/80">
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <button
-              onClick={() => { setActiveTab("repositories"); setCurrentPage(1); }}
-              className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "repositories" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
-            >
-              Repositories
-            </button>
-            <button
-              onClick={() => { setActiveTab("workflows"); setCurrentPage(1); }}
-              className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "workflows" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
-            >
-              Workflows
-            </button>
-            <button
-              onClick={() => { setActiveTab("executions"); setCurrentPage(1); }}
-              className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "executions" ? "bg-purple-500/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.15)]" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"}`}
-            >
-              Pipeline Executions
-            </button>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-black/50 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-purple-500 transition-colors w-full md:w-auto">
-              <Filter size={14} className="text-slate-400" />
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-black tracking-tight text-white">Repository Intelligence</h2>
+                {statusData ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider badge-success">
+                    <CheckCircle size={11}/> Connected
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider badge-danger">
+                    <XCircle size={11}/> Not Connected
+                  </span>
+                )}
+              </div>
+              {statusData && (
+                <p className="text-sm text-slate-400 flex items-center gap-2">
+                  <User size={13} className="text-slate-500" />
+                  <span className="font-mono text-sky-400/80">{statusData.username || "GitHub User"}</span>
+                </p>
+              )}
+              {errorMsg && (
+                <div className="mt-3 px-3.5 py-2.5 rounded-xl text-sm text-rose-400 max-w-xl badge-danger">
+                  {errorMsg}
+                </div>
+              )}
+              {warningMsgs.length > 0 && !errorMsg && (
+                <div className="mt-3 space-y-1.5 max-w-xl">
+                  {warningMsgs.map((msg, i) => (
+                    <div key={i} className="px-3.5 py-2 rounded-xl text-xs text-amber-400 flex items-center gap-2 badge-warning">
+                      <AlertTriangle size={12} className="shrink-0" /> {msg}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2.5">
               <select
-                value={repoFilter}
-                onChange={(e) => { setRepoFilter(e.target.value); setCurrentPage(1); }}
-                className="bg-transparent text-slate-300 text-sm focus:outline-none w-full md:w-48 appearance-none"
-              >
+                value={syncScope}
+                onChange={(e) => {
+                  const newScope = e.target.value;
+                  setSyncScope(newScope);
+                  setRepos([]); setWorkflows([]); setRuns([]);
+                  setWarningMsgs([]); setSummary({});
+                  setRepoFilter("all"); setStatusFilter("all");
+                  handleForceSync(newScope);
+                }}
+                disabled={syncing}
+                className={selectCls}>
+                <option value="owned">Owned Repositories</option>
+                <option value="accessible">All Accessible</option>
+              </select>
+              <button onClick={handleForceSync} disabled={syncing} className="btn-ghost">
+                <RefreshCw size={14} className={syncing ? "animate-spin text-sky-400" : "text-slate-400"} />
+                {syncing ? "Syncing..." : "Force Sync"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Metric Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+          {[
+            { label: syncScope === "owned" ? "Repositories" : "Accessible", value: repos.length,            icon: <Folder size={14}/>,   color: "sky"     },
+            { label: "Workflows",   value: workflows.length,                                                  icon: <Layers size={14}/>,   color: "indigo"  },
+            { label: "Recent Runs", value: runs.length,                                                       icon: <GitBranch size={14}/>, color: "violet"  },
+            { label: "Failed",      value: summary?.failed || 0,                                              icon: <XCircle size={14}/>,  color: "rose",   alert: (summary?.failed || 0) > 0 },
+            { label: "Success",     value: summary?.success || 0,                                             icon: <CheckCircle size={14}/>, color: "emerald" },
+            { label: "In Progress", value: summary?.in_progress || 0,                                         icon: <Activity size={14}/>, color: "amber"   },
+          ].map((m, i) => {
+            const cs = { sky:{t:"#38bdf8",b:"rgba(56,189,248,0.08)",br:"rgba(56,189,248,0.2)"}, indigo:{t:"#818cf8",b:"rgba(129,140,248,0.08)",br:"rgba(129,140,248,0.2)"}, violet:{t:"#a78bfa",b:"rgba(167,139,250,0.08)",br:"rgba(167,139,250,0.2)"}, rose:{t:"#f43f5e",b:"rgba(244,63,94,0.08)",br:"rgba(244,63,94,0.2)"}, emerald:{t:"#10b981",b:"rgba(16,185,129,0.08)",br:"rgba(16,185,129,0.2)"}, amber:{t:"#f59e0b",b:"rgba(245,158,11,0.08)",br:"rgba(245,158,11,0.2)"} }[m.color];
+            return (
+              <div key={i} className="glass-panel rounded-2xl p-4 flex flex-col justify-between"
+                style={m.alert ? { border:"1px solid rgba(244,63,94,0.25)", boxShadow:"0 0 20px rgba(244,63,94,0.07)" } : {}}>
+                <div className="p-1.5 rounded-lg w-fit mb-3" style={{ background: cs.b, border:`1px solid ${cs.br}`, color: cs.t }}>{m.icon}</div>
+                <div>
+                  <p className="text-2xl font-black text-white tracking-tight mb-0.5">{m.value}</p>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{m.label}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Tabs & Filters ── */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 glass-panel p-2.5 rounded-2xl">
+          <div className="flex items-center gap-1 w-full md:w-auto">
+            {[["repositories","Repositories"],["workflows","Workflows"],["executions","Executions"]].map(([val, label]) => (
+              <button key={val}
+                onClick={() => { setActiveTab(val); setCurrentPage(1); }}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeTab === val
+                    ? "bg-sky-500 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <div className="relative">
+              <Filter size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <select value={repoFilter} onChange={(e) => { setRepoFilter(e.target.value); setCurrentPage(1); }}
+                className={selectCls + " pl-8 w-full md:w-44 text-xs"}>
                 <option value="all">All Repositories</option>
-                {repos.map((r, i) => (
-                  <option key={i} value={r.full_name}>{r.name}</option>
-                ))}
+                {repos.map((r, i) => <option key={i} value={r.full_name}>{r.name}</option>)}
               </select>
             </div>
-            
             {activeTab === "executions" && (
-              <div className="flex items-center gap-2 bg-black/50 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-purple-500 transition-colors w-full md:w-auto">
-                <Activity size={14} className="text-slate-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                  className="bg-transparent text-slate-300 text-sm focus:outline-none w-full md:w-36 appearance-none"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="success">Success</option>
-                  <option value="failure">Failed</option>
-                  <option value="in_progress">In Progress</option>
-                </select>
-              </div>
+              <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                className={selectCls + " w-full md:w-36 text-xs"}>
+                <option value="all">All Statuses</option>
+                <option value="success">Success</option>
+                <option value="failure">Failed</option>
+                <option value="in_progress">In Progress</option>
+              </select>
             )}
           </div>
         </div>

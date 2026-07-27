@@ -1,5 +1,4 @@
 const nextConfig = {
-  reactCompiler: true,
   async rewrites() {
     return [
       {

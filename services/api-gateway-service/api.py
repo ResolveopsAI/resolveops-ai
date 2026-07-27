@@ -2856,10 +2856,7 @@ def github_status_proxy(current_user: dict = Depends(get_current_user)):
 @app.post("/api/v1/github/sync")
 async def github_sync_proxy(req: Request, current_user: dict = Depends(get_current_user)):
     import requests
-    from database import get_user_integrations
-    integrations = get_user_integrations(current_user.get("email")) or {}
-    github_data = integrations.get("github", integrations.get("github_actions", {}))
-    github_token = github_data.get("credentials", {}).get("github_token", os.getenv("GITHUB_PAT"))
+    github_token = get_github_token_for_tenant(current_user.get("email"))
     if not github_token:
         return JSONResponse(status_code=200, content={
             "connected": False,
@@ -2873,7 +2870,35 @@ async def github_sync_proxy(req: Request, current_user: dict = Depends(get_curre
     except Exception:
         data = {"scope": "owned"}
     print(f"GitHub sync scope={data.get('scope', 'owned')}")
-    res = requests.post(f"{GITHUB_INTELLIGENCE_SERVICE_URL}/api/v1/github/sync", json=data, headers=headers, timeout=120)
+    try:
+        res = requests.post(
+            f"{GITHUB_INTELLIGENCE_SERVICE_URL}/api/v1/github/sync",
+            json=data,
+            headers=headers,
+            timeout=120
+        )
+    except requests.exceptions.ConnectionError:
+        return JSONResponse(status_code=503, content={
+            "connected": False,
+            "status": "service_unavailable",
+            "error_code": "github_intelligence_unreachable",
+            "message": "GitHub intelligence service is unavailable. Please try again later."
+        })
+    except requests.exceptions.Timeout:
+        return JSONResponse(status_code=504, content={
+            "connected": False,
+            "status": "timeout",
+            "error_code": "github_sync_timeout",
+            "message": "GitHub sync timed out. The account may have many repositories. Please try again."
+        })
+    except Exception as e:
+        print(f"GitHub sync proxy error: {e}")
+        return JSONResponse(status_code=500, content={
+            "connected": False,
+            "status": "error",
+            "error_code": "github_sync_error",
+            "message": "An unexpected error occurred during GitHub sync."
+        })
     if res.status_code == 401:
         return JSONResponse(status_code=200, content={
             "connected": False,
