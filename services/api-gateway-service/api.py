@@ -132,52 +132,13 @@ def request_otp(req: OTPRequest):
     if os.getenv("DEBUG_LOG_OTP", "false").lower() == "true":
         print(f"[DEV-ONLY] Generated OTP for {req.email}: {otp_code}")
 
-    sb_fqdn = os.getenv("SERVICE_BUS_FQDN")
-    sb_queue = os.getenv("SERVICE_BUS_QUEUE_NAME", "notification-requested")
-
-    if not sb_fqdn:
-        print("Warning: SERVICE_BUS_FQDN not set, falling back to direct SMTP email send")
-        try:
-            notifications.send_otp_email(req.email, req.full_name, otp_code)
-            return {"message": f"OTP requested for {req.email} (sent directly via SMTP)."}
-        except Exception as e:
-            print(f"Failed to send direct SMTP email: {e}")
-            return {"message": f"OTP requested for {req.email}. (Direct SMTP send failed: {e})"}
-
     try:
-        from azure.servicebus import ServiceBusClient, ServiceBusMessage
-        from azure.identity import DefaultAzureCredential
-        import json
-
-        credential = DefaultAzureCredential()
-        with ServiceBusClient(sb_fqdn, credential=credential) as client:
-            with client.get_queue_sender(sb_queue) as sender:
-                msg_payload = {
-                    "type": "otp",
-                    "email": req.email,
-                    "full_name": req.full_name,
-                    "otp_code": otp_code,
-                    "correlation_id": str(uuid.uuid4()),
-                    "created_at": time.time(),
-                    "expires_at": expires_at
-                }
-                message = ServiceBusMessage(json.dumps(msg_payload))
-                sender.send_messages(message)
-                print(f"Successfully queued OTP notification for {req.email} to {sb_queue}")
-
+        notifications.send_otp_email(req.email, req.full_name, otp_code)
+        return {"message": f"OTP requested for {req.email}. Please check your inbox."}
     except Exception as e:
-        print(f"Failed to publish OTP to Service Bus: {e}")
-        # Remove from store since it failed
+        print(f"Failed to send direct SMTP email: {e}")
         del otp_store[req.email]
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "status": "service_bus_publish_failed",
-                "message": "Failed to queue OTP notification. Service unavailable."
-            }
-        )
-
-    return {"message": f"OTP queued for {req.email}. Please check your inbox."}
+        raise HTTPException(status_code=500, detail=f"Failed to send OTP email: {str(e)}")
 
 # --- Auth Endpoints (DynamoDB) ---
 @app.post("/api/register")
