@@ -32,6 +32,7 @@ class User(Base):
     full_name = Column(String(255))
     hashed_password = Column(String(255))
     created_at = Column(String(100))
+    role = Column(String(50), default="user")
     reliability_score = Column(String(50), default="100.0")
     integrations = Column(JSON, default=dict)
 

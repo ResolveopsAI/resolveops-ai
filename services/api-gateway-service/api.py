@@ -87,6 +87,8 @@ class UserAuth(BaseModel):
     password: str
     full_name: Optional[str] = None
     otp_code: Optional[str] = None
+    role: Optional[str] = "user"
+    admin_secret: Optional[str] = None
 
 class OTPRequest(BaseModel):
     email: str
@@ -116,7 +118,7 @@ def request_otp(req: OTPRequest):
     # Check if email already registered
     users_table = get_users_table()
     existing = users_table.get_item(Key={'email': req.email})
-    if 'Item' in existing:
+    if 'Item' in existing and existing['Item'].get('hashed_password'):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     otp_code = str(random.randint(100000, 999999))
@@ -212,10 +214,10 @@ def register_user(user: UserAuth):
         hashed_password = get_password_hash(user.password)
         user_id = str(uuid.uuid4())
 
-        # Assign role: admin for specific users or first user
-        role = "user"
-        if user.email.lower() in ["sathvik2003@gmail.com", "admin@resolveops.com", "sathvik@resolveops.com"] or not users_table.scan(Limit=1).get('Items'):
-            role = "admin"
+        role = user.role if user.role in ["user", "admin"] else "user"
+        if role == "admin":
+            if user.admin_secret != "resolveops-admin-2026":
+                raise HTTPException(status_code=403, detail="Invalid Administrator Invite Code")
 
         # Save user with full_name, role, and preserve integrations
         item_to_put = {

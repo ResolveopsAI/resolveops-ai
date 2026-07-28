@@ -40,6 +40,8 @@ function RegisterForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [regRole, setRegRole] = useState("user");
+  const [adminSecret, setAdminSecret] = useState("");
   const [showPw, setShowPw] = useState(false);
 
   const handleRequestOtp = async (e) => {
@@ -55,7 +57,7 @@ function RegisterForm() {
   const handleRegister = async (e) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      await fetchApi("/register", { method: "POST", body: JSON.stringify({ email: regEmail, password: regPassword, full_name: fullName, otp_code: otpCode }) });
+      await fetchApi("/register", { method: "POST", body: JSON.stringify({ email: regEmail, password: regPassword, full_name: fullName, otp_code: otpCode, role: regRole, admin_secret: adminSecret }) });
       const loginData = await fetchApi("/login", { method: "POST", body: JSON.stringify({ email: regEmail, password: regPassword }) });
       if (loginData.token) { localStorage.setItem("jwt_token", loginData.token); router.push("/"); }
     } catch (err) { setError(err.message || "Registration failed."); }
@@ -88,6 +90,30 @@ function RegisterForm() {
             <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Work Email</label>
             <input className={inputCls} type="email" placeholder="admin@company.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Account Role</label>
+            <div className="relative">
+              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
+              <select className={inputCls + " pl-9 appearance-none"} value={regRole} onChange={e => {setRegRole(e.target.value); setAdminSecret("");}} required>
+                <option value="user">Standard User</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+          </div>
+          
+          {regRole === "admin" && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck size={12} className="text-amber-500" /> Admin Invite Code
+              </label>
+              <div className="relative">
+                <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
+                <input className={inputCls + " pl-9 border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/25"} 
+                  type="password" placeholder="Enter secure invite code" value={adminSecret} onChange={e => setAdminSecret(e.target.value)} required={regRole === "admin"} />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
             <div className="relative">
