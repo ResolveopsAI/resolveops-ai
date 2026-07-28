@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   BarChart3, Activity, ShieldAlert, CheckCircle2, XCircle, AlertTriangle,
-  RefreshCw, Server, Cloud, GitBranch, Shield, Zap, Database, Clock, ArrowUpRight
+  RefreshCw, Server, Cloud, GitBranch, Shield, Zap, Database, Clock, ArrowUpRight, Cpu, HardDrive, Wifi
 } from "lucide-react";
 import { fetchApi, getUserRole } from "@/lib/api";
 import Link from "next/link";
@@ -296,12 +296,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* System Load */}
-          <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4 md:col-span-2">
+          {/* System Load - CPU */}
+          <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Activity size={16} className="text-emerald-400" /> Docker Service CPU Utilization (Local)
+              <Cpu size={16} className="text-emerald-400" /> Docker Service CPU Utilization
             </h3>
-            <div className="h-72 w-full">
+            <div className="h-64 w-full">
               {time_series.system && time_series.system.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={time_series.system} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -310,13 +310,72 @@ export default function AnalyticsPage() {
                     <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} unit="%" />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                    <Line type="monotone" dataKey="api_gateway" stroke="#34d399" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#34d399", strokeWidth: 0 }} />
-                    <Line type="monotone" dataKey="ai_rca" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa", strokeWidth: 0 }} />
-                    <Line type="monotone" dataKey="database" stroke="#f472b6" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#f472b6", strokeWidth: 0 }} />
+                    <Line type="monotone" name="API Gateway" dataKey="cpu_api" stroke="#34d399" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#34d399", strokeWidth: 0 }} />
+                    <Line type="monotone" name="AI RCA" dataKey="cpu_rca" stroke="#a78bfa" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#a78bfa", strokeWidth: 0 }} />
+                    <Line type="monotone" name="Database" dataKey="cpu_db" stroke="#f472b6" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#f472b6", strokeWidth: 0 }} />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-xs text-slate-500">No system load data available</div>
+                <div className="flex h-full items-center justify-center text-xs text-slate-500">No CPU data available</div>
+              )}
+            </div>
+          </div>
+
+          {/* System Load - Memory */}
+          <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <HardDrive size={16} className="text-blue-400" /> Docker Container Memory
+            </h3>
+            <div className="h-64 w-full">
+              {time_series.system && time_series.system.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={time_series.system} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="memApi" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="memRca" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
+                    <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} unit=" MB" />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                    <Area type="monotone" name="API Gateway" dataKey="mem_api" stroke="#3b82f6" fillOpacity={1} fill="url(#memApi)" strokeWidth={2} />
+                    <Area type="monotone" name="AI RCA" dataKey="mem_rca" stroke="#8b5cf6" fillOpacity={1} fill="url(#memRca)" strokeWidth={2} />
+                    <Area type="monotone" name="Database" dataKey="mem_db" stroke="#ec4899" fillOpacity={0.1} strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-slate-500">No Memory data available</div>
+              )}
+            </div>
+          </div>
+
+          {/* Network I/O */}
+          <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4 lg:col-span-2">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Wifi size={16} className="text-teal-400" /> Cluster Network I/O (KB/s)
+            </h3>
+            <div className="h-64 w-full">
+              {time_series.system && time_series.system.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={time_series.system} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
+                    <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
+                    <Line type="monotone" name="Network Rx (In)" dataKey="net_rx" stroke="#14b8a6" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#14b8a6", strokeWidth: 0 }} />
+                    <Line type="monotone" name="Network Tx (Out)" dataKey="net_tx" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#f59e0b", strokeWidth: 0 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-slate-500">No Network data available</div>
               )}
             </div>
           </div>
