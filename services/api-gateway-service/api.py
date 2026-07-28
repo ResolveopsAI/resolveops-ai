@@ -216,7 +216,8 @@ def register_user(user: UserAuth):
 
         role = user.role if user.role in ["user", "admin"] else "user"
         if role == "admin":
-            if user.admin_secret != "resolveops-admin-2026":
+            expected_secret = os.getenv("ADMIN_INVITE_CODE", "resolveops-admin-2026")
+            if user.admin_secret != expected_secret:
                 raise HTTPException(status_code=403, detail="Invalid Administrator Invite Code")
 
         # Save user with full_name, role, and preserve integrations
