@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 import {
   Cloud, Box, GitBranch, ShieldAlert, Activity, DollarSign,
   AlertTriangle, CheckCircle, Server, RefreshCw, ChevronRight,
@@ -21,6 +21,12 @@ export default function GlobalDashboard() {
     failures: 0, health: "100%"
   });
   const [deployments, setDeployments] = useState([]);
+
+  useEffect(() => {
+    if (getUserRole() !== "admin") {
+      router.push("/chat");
+    }
+  }, [router]);
 
   const fetchData = () => {
     setLoading(true);

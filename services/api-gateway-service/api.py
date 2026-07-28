@@ -211,12 +211,18 @@ def register_user(user: UserAuth):
         hashed_password = get_password_hash(user.password)
         user_id = str(uuid.uuid4())
 
-        # Save user with full_name and preserve integrations
+        # Assign role: admin for specific users or first user
+        role = "user"
+        if user.email.lower() in ["sathvik2003@gmail.com", "admin@resolveops.com", "sathvik@resolveops.com"] or not users_table.scan(Limit=1).get('Items'):
+            role = "admin"
+
+        # Save user with full_name, role, and preserve integrations
         item_to_put = {
             'email': user.email,
             'user_id': user_id,
             'tenant_id': user_id,
             'full_name': full_name,
+            'role': role,
             'hashed_password': hashed_password,
             'created_at': datetime.datetime.utcnow().isoformat()
         }
@@ -261,6 +267,7 @@ def login_user(user: UserAuth):
             "user_id": db_user['user_id'],
             "email": db_user['email'],
             "full_name": db_user.get('full_name', ''),
+            "role": db_user.get('role', 'user'),
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         }, JWT_SECRET, algorithm="HS256")
         
@@ -3008,6 +3015,11 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
     """
     tenant_id = current_user.get("user_id")
     tenant_email = current_user.get("email")
+    role = current_user.get("role", "user")
+    
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Only administrators can view global operational telemetry.")
+
     timestamp = datetime.datetime.utcnow().isoformat() + "Z"
 
     # 1. Integrations Status

@@ -7,7 +7,7 @@ import {
   BarChart3, Activity, ShieldAlert, CheckCircle2, XCircle, AlertTriangle,
   RefreshCw, Server, Cloud, GitBranch, Shield, Zap, Database, Clock, ArrowUpRight
 } from "lucide-react";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 import Link from "next/link";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -59,6 +59,12 @@ export default function AnalyticsPage() {
       router.push("/login");
       return;
     }
+    
+    if (getUserRole() !== "admin") {
+      router.push("/chat");
+      return;
+    }
+
     loadAnalytics();
 
     // Auto-refresh every 60 seconds

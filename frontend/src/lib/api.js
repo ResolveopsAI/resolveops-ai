@@ -125,3 +125,22 @@ export async function fetchApi(endpoint, options = {}) {
   }
   return response.text();
 }
+
+/**
+ * Extracts the user role from the stored JWT token.
+ * Defaults to 'user' if token is missing or invalid.
+ */
+export function getUserRole() {
+  if (typeof window === 'undefined') return 'user';
+  const token = localStorage.getItem('jwt_token');
+  if (!token) return 'user';
+  
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const decodedJson = atob(payloadBase64);
+    const payload = JSON.parse(decodedJson);
+    return payload.role || 'user';
+  } catch (e) {
+    return 'user';
+  }
+}

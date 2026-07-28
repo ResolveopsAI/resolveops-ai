@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 
 const LOGO = (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,6 +30,11 @@ export default function SidebarNavigation() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [integrations, setIntegrations] = useState({ github: false, aws: false, azure: false });
   const [systemTime, setSystemTime] = useState("");
+  const [userRole, setUserRole] = useState("user");
+
+  useEffect(() => {
+    setUserRole(getUserRole());
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar_collapsed");
@@ -65,13 +70,13 @@ export default function SidebarNavigation() {
   };
 
   const navItems = [
-    { name: "Command Center", path: "/",           icon: LayoutDashboard, always: true },
+    ...(userRole === "admin" ? [{ name: "Command Center", path: "/", icon: LayoutDashboard }] : []),
     ...(integrations.github ? [{ name: "GitHub Sync",   path: "/github",       icon: GitBranch }] : []),
     ...(integrations.azure  ? [{ name: "Azure Hub",     path: "/azure",        icon: Cloud }] : []),
     ...(integrations.aws    ? [{ name: "AWS Hub",       path: "/aws",          icon: Server }] : []),
     { name: "AI Copilot",     path: "/chat",        icon: MessageSquareCode, always: true },
     { name: "Suggestions",    path: "/suggestions", icon: Lightbulb, always: true },
-    { name: "Analytics",      path: "/analytics",   icon: BarChart3,  always: true },
+    ...(userRole === "admin" ? [{ name: "Analytics",      path: "/analytics",   icon: BarChart3 }] : []),
     { name: "Integrations",   path: "/integrations",icon: Settings,   always: true },
   ];
 
