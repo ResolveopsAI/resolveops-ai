@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { GitBranch, Server, Database, Activity, Key, Eye, EyeOff, CheckCircle, ArrowRight, ShieldCheck, Link2 } from "lucide-react";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 import Link from "next/link";
 
 export default function IntegrationsManager() {
@@ -31,6 +31,22 @@ export default function IntegrationsManager() {
   const [azureSubscription, setAzureSubscription] = useState("");
   const [githubEmail, setGithubEmail] = useState("");
   const [githubToken, setGithubToken] = useState("");
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [clearingData, setClearingData] = useState(false);
+
+  const handleClearData = async () => {
+    setClearingData(true);
+    try {
+      await fetchApi("/api/v1/admin/clear-data", { method: "DELETE" });
+      setShowClearDataModal(false);
+      setSuccessToast({ show: true, title: "Data Cleared", message: "All operational data was successfully deleted." });
+      setTimeout(() => setSuccessToast({ show: false, title: "", message: "" }), 3000);
+    } catch (e) {
+      alert("Failed to clear data: " + e.message);
+    } finally {
+      setClearingData(false);
+    }
+  };
 
   const loadIntegrations = () => {
     fetchApi("/api/v1/integrations/status")
@@ -300,6 +316,36 @@ export default function IntegrationsManager() {
             {renderCard("aws", "Amazon Web Services", "Connect via IAM Access Keys to discover VPCs, EC2 instances, and stream CloudWatch telemetry.", Server, "text-amber-400", "bg-amber-500/10", "aws")}
           </div>
         </div>
+
+        {getUserRole() === "admin" && (
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6 flex items-center gap-2">
+              <ShieldCheck size={14} className="text-slate-400" /> Admin Data Management
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass-panel border border-rose-500/30 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-sm">
+                      <Activity size={24} />
+                    </div>
+                  </div>
+                  <h3 className="text-white font-bold text-xl mb-2">Clear Operational Data</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">
+                    Permanently delete all operational telemetry, incidents, deployments, and logs for your tenant. Your configurations, users, and API keys will be preserved.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowClearDataModal(true)}
+                  className="mt-6 w-full py-3 rounded-xl text-xs font-bold tracking-wide border cursor-pointer transition-all flex justify-center items-center gap-2 shadow-sm bg-rose-600/20 border-rose-500/30 text-rose-400 hover:bg-rose-500/30 hover:border-rose-500/50"
+                >
+                  <ShieldAlert size={16} /> Clear System Data
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* GitHub Modal */}
         {activeModal === "github" && (
@@ -581,6 +627,41 @@ export default function IntegrationsManager() {
                   className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-sky-500/20"
                 >
                   Authenticate
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear Data Confirmation Modal */}
+        {showClearDataModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="glass-panel border border-rose-500/50 w-full max-w-md rounded-2xl overflow-hidden relative shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                <ShieldAlert className="text-rose-500" size={24} /> Clear Operational Data
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Are you absolutely sure? This will permanently delete all operational telemetry, incidents, deployments, and chat history for your organization.
+              </p>
+              <p className="text-xs text-rose-400 font-semibold bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg">
+                Warning: This action cannot be undone. User accounts and API keys will be preserved.
+              </p>
+              
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-800/80">
+                <button
+                  onClick={() => setShowClearDataModal(false)}
+                  disabled={clearingData}
+                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearData}
+                  disabled={clearingData}
+                  className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-rose-500/20 flex items-center gap-2"
+                >
+                  {clearingData ? "Clearing..." : "Yes, Clear Data"}
                 </button>
               </div>
             </div>

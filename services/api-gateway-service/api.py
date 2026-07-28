@@ -23,7 +23,8 @@ from database import (
     store_deployment, get_latest_deployment,
     store_chat_message, get_chat_history, get_chat_sessions, delete_chat_history,
     get_chat_history_table, get_predictive_risks,
-    update_user_integrations, get_user_integrations
+    update_user_integrations, get_user_integrations,
+    clear_tenant_data
 )
 import notifications
 from predictive_engine import PredictiveEngine
@@ -3333,6 +3334,18 @@ def download_artifact(id: str, current_user: dict = Depends(get_current_user), d
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to download artifact: {e}")
+
+@app.delete("/api/v1/admin/clear-data")
+async def clear_data_endpoint(current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user.get("user_id")
+    role = current_user.get("role", "user")
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Only administrators can perform this action.")
+    
+    success = clear_tenant_data(tenant_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to clear data.")
+    return {"message": "Data cleared successfully."}
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

@@ -369,3 +369,21 @@ def get_user_integrations(email: str) -> dict:
     finally:
         db.close()
 
+def clear_tenant_data(tenant_id: str) -> bool:
+    db = SessionLocal()
+    if not db: return False
+    try:
+        from pg_database import Incident, Log, Deployment, ChatHistory, PredictiveRisk
+        db.query(Incident).filter_by(tenant_id=tenant_id).delete()
+        db.query(Log).filter_by(tenant_id=tenant_id).delete()
+        db.query(Deployment).filter_by(tenant_id=tenant_id).delete()
+        db.query(ChatHistory).filter_by(tenant_id=tenant_id).delete()
+        db.query(PredictiveRisk).filter_by(tenant_id=tenant_id).delete()
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to clear tenant data: {e}")
+        return False
+    finally:
+        db.close()
