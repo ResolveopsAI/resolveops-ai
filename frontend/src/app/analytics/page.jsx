@@ -356,29 +356,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Network I/O */}
-          <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Wifi size={16} className="text-teal-400" /> Server Network Usage (KB/s)
-            </h3>
-            <div className="h-64 w-full">
-              {time_series.system && time_series.system.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={time_series.system} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                    <XAxis dataKey="time" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
-                    <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
-                    <Line type="monotone" name="Network Rx (In)" dataKey="net_rx" stroke="#14b8a6" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#14b8a6", strokeWidth: 0 }} />
-                    <Line type="monotone" name="Network Tx (Out)" dataKey="net_tx" stroke="#f59e0b" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#f59e0b", strokeWidth: 0 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-slate-500">No Network data available</div>
-              )}
-            </div>
-          </div>
+
 
         </div>
 
