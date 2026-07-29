@@ -3502,7 +3502,100 @@ def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
         }
     }
 
-# --- Artifacts Management ---
+
+@app.get("/api/v1/monitoring/cluster/stream")
+async def stream_cluster_monitoring(token: str, request: Request):
+    """
+    Server-Sent Events (SSE) streaming endpoint for real-time cluster monitoring.
+    Pushes a fresh JSON snapshot every 2 seconds over a single persistent HTTP
+    connection — no polling needed on the frontend.
+
+    Authentication: JWT passed as `?token=<jwt>` query param (SSE/ReadableStream
+    cannot set Authorization headers after the connection opens).
+    """
+    import asyncio
+    from fastapi.responses import StreamingResponse as _SR
+
+    # Validate JWT once at stream open
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    def _build_snapshot() -> dict:
+        now = datetime.datetime.utcnow()
+        host = _get_host_metrics()
+        services = _get_docker_services_metrics()
+        history = _build_time_series(services)
+        spike_alerts = _detect_spikes(history)
+
+        critical_services = [s for s in services if s["critical"]]
+        degraded_critical = [s for s in critical_services if s["status"] in ("warning", "critical", "offline", "unknown")]
+        if not degraded_critical:
+            cluster_health = "healthy"
+        elif all(s["status"] == "offline" for s in degraded_critical):
+            cluster_health = "critical"
+        else:
+            cluster_health = "degraded"
+
+        top_cpu = sorted(services, key=lambda x: x["cpu_pct"], reverse=True)[:3]
+        top_mem = sorted(services, key=lambda x: x["mem_pct"], reverse=True)[:3]
+
+        return {
+            "generated_at": now.isoformat() + "Z",
+            "cluster_health": cluster_health,
+            "host": host,
+            "services": services,
+            "time_series": {svc: samples for svc, samples in history.items()},
+            "spike_alerts": spike_alerts,
+            "top_cpu_consumers": top_cpu,
+            "top_mem_consumers": top_mem,
+            "summary": {
+                "total_services": len(services),
+                "healthy_services": len([s for s in services if s["status"] == "healthy"]),
+                "warning_services": len([s for s in services if s["status"] == "warning"]),
+                "critical_services": len([s for s in services if s["status"] == "critical"]),
+                "offline_services": len([s for s in services if s["status"] in ("offline", "unknown")]),
+                "spike_count": len(spike_alerts),
+            }
+        }
+
+    async def _event_generator():
+        """Yields SSE-formatted events; exits cleanly when the client disconnects."""
+        try:
+            while True:
+                # Check client disconnect
+                if await request.is_disconnected():
+                    break
+
+                try:
+                    snapshot = await asyncio.get_event_loop().run_in_executor(None, _build_snapshot)
+                    data_str = json.dumps(snapshot)
+                    yield f"data: {data_str}\n\n"
+                except Exception as e:
+                    # Send an error event so the client can display it
+                    yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+                await asyncio.sleep(2)
+        except asyncio.CancelledError:
+            pass
+
+    return _SR(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",       # disable nginx buffering
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
+
 
 
 class ArtifactResponse(BaseModel):

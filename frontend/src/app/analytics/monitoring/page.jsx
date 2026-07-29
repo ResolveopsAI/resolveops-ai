@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { fetchApi, getUserRole } from "@/lib/api";
+import { getUserRole } from "@/lib/api";
 import {
   Activity, Cpu, HardDrive, Wifi, Server, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, ShieldAlert, BarChart3,
@@ -156,52 +156,140 @@ const fmtUptime = (s) => {
   return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
-//  Main Page 
+// Main Page
 export default function MonitoringPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [frameCount, setFrameCount] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
   const [hostChart, setHostChart] = useState([]);
-  const timerRef = useRef(null);
+  const abortRef = useRef(null);   // AbortController for the current SSE connection
+  const retryRef = useRef(null);   // setTimeout handle for reconnect
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    try {
-      const res = await fetchApi("/api/v1/monitoring/cluster");
-      setData(res);
-      setLastUpdated(new Date());
-      setError(null);
-      if (res?.host) {
-        setHostChart((prev) => [
-          ...prev.slice(-24),
-          {
-            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }),
-            cpu: res.host.cpu_pct,
-            mem: res.host.mem_pct,
-            disk: res.host.disk_pct,
-          },
-        ]);
-      }
-    } catch (e) {
-      setError(e.message || "Failed to fetch monitoring data.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  /**
+   * Apply an incoming snapshot to state.
+   * Called both by the SSE stream and by the manual one-shot REST fetch.
+   */
+  const applySnapshot = useCallback((res) => {
+    setData(res);
+    setLastUpdated(new Date());
+    setError(null);
+    setLoading(false);
+    setFrameCount((n) => n + 1);
+    if (res?.host) {
+      setHostChart((prev) => [
+        ...prev.slice(-24),
+        {
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+          }),
+          cpu:  res.host.cpu_pct,
+          mem:  res.host.mem_pct,
+          disk: res.host.disk_pct,
+        },
+      ]);
     }
   }, []);
 
+  /**
+   * Open an SSE stream to /api/v1/monitoring/cluster/stream.
+   * The server pushes a JSON snapshot every 2 s over the same connection.
+   * We pass the JWT as a query-param because fetch ReadableStream cannot
+   * send custom headers after the connection is established.
+   */
+  const openStream = useCallback((token) => {
+    // Cancel any in-flight stream first
+    if (abortRef.current) abortRef.current.abort();
+    clearTimeout(retryRef.current);
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const url = `${API_BASE}/v1/monitoring/cluster/stream?token=${encodeURIComponent(token)}`;
+
+    setConnected(false);
+
+    (async () => {
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => `HTTP ${res.status}`);
+          throw new Error(txt);
+        }
+
+        setConnected(true);
+        setError(null);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buf += decoder.decode(value, { stream: true });
+
+          // SSE frames are separated by double-newline
+          const parts = buf.split('\n\n');
+          buf = parts.pop() ?? '';   // keep incomplete tail
+
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line) continue;
+
+            // Handle error event
+            if (line.startsWith('event: error')) {
+              const dataPart = parts.find((p) => p.startsWith('data:'));
+              const msg = dataPart ? dataPart.slice(5).trim() : 'Stream error';
+              setError(msg);
+              continue;
+            }
+
+            // Standard data frame
+            if (line.startsWith('data: ')) {
+              try {
+                const json = JSON.parse(line.slice(6));
+                applySnapshot(json);
+              } catch { /* malformed frame — skip */ }
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return; // intentional close — no retry
+        setConnected(false);
+        setError(`Stream disconnected: ${err.message}. Reconnecting in 3s…`);
+        setLoading(false);
+        // Reconnect after 3 s
+        retryRef.current = setTimeout(() => {
+          const t = localStorage.getItem('jwt_token');
+          if (t) openStream(t);
+        }, 3000);
+      }
+    })();
+  }, [applySnapshot]);
+
+  /** Manual re-connect: abort + reopen immediately. */
+  const handleRefresh = useCallback(() => {
+    const token = localStorage.getItem('jwt_token');
+    if (token) openStream(token);
+  }, [openStream]);
+
   useEffect(() => {
-    const token = localStorage.getItem("jwt_token");
-    if (!token) { router.push("/login"); return; }
-    if (getUserRole() !== "admin") { router.push("/chat"); return; }
-    fetchData(false);
-    timerRef.current = setInterval(() => fetchData(true), 8000);
-    return () => clearInterval(timerRef.current);
-  }, [router, fetchData]);
+    const token = localStorage.getItem('jwt_token');
+    if (!token) { router.push('/login'); return; }
+    if (getUserRole() !== 'admin') { router.push('/chat'); return; }
+    openStream(token);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+      clearTimeout(retryRef.current);
+    };
+  }, [router, openStream]);
 
   if (loading) return (
     <DashboardLayout>
@@ -214,8 +302,8 @@ export default function MonitoringPage() {
           </div>
         </div>
         <div className="text-center">
-          <p className="text-slate-200 font-semibold text-sm">Initializing Cluster Monitor</p>
-          <p className="text-slate-500 font-mono text-[10px] mt-1 tracking-widest">POLLING SYSTEM TELEMETRY</p>
+          <p className="text-slate-200 font-semibold text-sm">Connecting to Live Stream</p>
+          <p className="text-slate-500 font-mono text-[10px] mt-1 tracking-widest">OPENING SSE CONNECTION...</p>
         </div>
       </div>
     </DashboardLayout>
@@ -250,18 +338,43 @@ export default function MonitoringPage() {
               <Activity className="text-indigo-400" size={22} />
               Real-Time Cluster Monitoring
             </h2>
-            <p className="text-xs text-slate-400 mt-1">Live host &amp; service metrics  Auto-refresh every 8s  Admin only</p>
+            <p className="text-xs text-slate-400 mt-1">SSE live push every 2s · Admin only · Click any service card to drill down</p>
           </div>
           <div className="flex items-center gap-3">
+            {/* LIVE / OFFLINE badge */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all ${
+              connected
+                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                : 'bg-slate-600/15 border-slate-600/20 text-slate-500'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+              }`} />
+              {connected ? 'Live' : 'Offline'}
+            </div>
+
+            {/* Frame counter */}
+            {frameCount > 0 && (
+              <span className="text-[10px] font-mono text-slate-600">
+                #{frameCount}
+              </span>
+            )}
+
+            {/* Last updated */}
             {lastUpdated && (
               <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                 <Clock size={10} /> {lastUpdated.toLocaleTimeString()}
               </span>
             )}
-            <button onClick={() => fetchData(false)} disabled={refreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-xs hover:bg-indigo-600/30 transition-all disabled:opacity-50">
-              <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
-              {refreshing ? "Refreshing" : "Refresh"}
+
+            {/* Manual reconnect */}
+            <button
+              onClick={handleRefresh}
+              title="Force reconnect stream"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 text-xs hover:bg-indigo-600/30 transition-all"
+            >
+              <RefreshCw size={12} />
+              Reconnect
             </button>
           </div>
         </div>
@@ -631,7 +744,7 @@ export default function MonitoringPage() {
 
         {/*  Footer  */}
         <div className="flex items-center justify-between text-[10px] text-slate-600 border-t border-white/5 pt-3 font-mono">
-          <span>Source: psutil host + Docker SDK per-container  Poll: 8s</span>
+          <span>Source: psutil host + Docker SDK per-container  SSE push: 2s</span>
           {generated_at && <span>Snapshot: {new Date(generated_at).toLocaleString()}</span>}
         </div>
 
