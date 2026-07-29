@@ -3201,7 +3201,309 @@ async def proxy_aws_requests(path: str, request: Request, current_user: dict = D
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Failed to communicate with AWS intelligence service: {str(e)}")
 
+# --- Inbuilt Monitoring Endpoints ---
+
+import psutil
+import platform
+import socket
+
+# Rolling metric store: keeps last 30 samples per service (in-memory, per-process)
+_monitoring_history: dict = {}  # service_name -> list of {ts, cpu, mem, rps}
+_request_counter: dict = {}     # service_name -> total_requests (incremented by log ingestion)
+
+def _get_docker_services_metrics():
+    """
+    Collects real psutil metrics per-process, maps them to known service names,
+    and builds a service health matrix. Falls back to host-level metrics if
+    Docker socket is unavailable.
+    """
+    services_map = {
+        "api-gateway-service":   {"port": 8000, "critical": True},
+        "ai-rca-service":        {"port": 8001, "critical": True},
+        "auth-service":          {"port": 8002, "critical": True},
+        "mcp-server-service":    {"port": 8003, "critical": False},
+        "notification-service":  {"port": 8004, "critical": False},
+        "github-intelligence-service": {"port": 8005, "critical": False},
+        "aws-intelligence-service":    {"port": 8006, "critical": False},
+        "azure-intelligence-service":  {"port": 8007, "critical": False},
+    }
+
+    now = datetime.datetime.utcnow()
+    results = []
+
+    # Try Docker SDK first
+    try:
+        import docker
+        docker_client = docker.from_env(timeout=3)
+        containers = docker_client.containers.list()
+        container_map = {}
+        for c in containers:
+            name = c.name.replace("resolveops-ai-", "").replace("resolveops_", "").strip("-_1234567890").rstrip("-_1")
+            container_map[name] = c
+
+        for svc_name, svc_cfg in services_map.items():
+            short = svc_name
+            container = container_map.get(svc_name) or container_map.get(short)
+
+            if container:
+                try:
+                    stats = container.stats(stream=False)
+                    cpu_delta = stats["cpu_stats"]["cpu_usage"]["total_usage"] - stats["precpu_stats"]["cpu_usage"]["total_usage"]
+                    system_delta = stats["cpu_stats"]["system_cpu_usage"] - stats["precpu_stats"]["system_cpu_usage"]
+                    num_cpus = stats["cpu_stats"].get("online_cpus", 1)
+                    cpu_pct = round((cpu_delta / system_delta) * num_cpus * 100.0, 2) if system_delta > 0 else 0.0
+
+                    mem_usage = stats["memory_stats"].get("usage", 0)
+                    mem_limit = stats["memory_stats"].get("limit", 1)
+                    mem_pct = round((mem_usage / mem_limit) * 100, 2)
+                    mem_mb = round(mem_usage / (1024 * 1024), 1)
+
+                    net_in = sum(v.get("rx_bytes", 0) for v in stats.get("networks", {}).values())
+                    net_out = sum(v.get("tx_bytes", 0) for v in stats.get("networks", {}).values())
+
+                    uptime_secs = (now - datetime.datetime.fromisoformat(
+                        container.attrs["State"]["StartedAt"].replace("Z", "+00:00").replace("+00:00", "")
+                    )).total_seconds()
+
+                    status = "healthy" if cpu_pct < 80 and mem_pct < 85 else ("warning" if cpu_pct < 95 or mem_pct < 95 else "critical")
+
+                    results.append({
+                        "name": svc_name,
+                        "status": status,
+                        "cpu_pct": cpu_pct,
+                        "mem_pct": mem_pct,
+                        "mem_mb": mem_mb,
+                        "net_in_kb": round(net_in / 1024, 1),
+                        "net_out_kb": round(net_out / 1024, 1),
+                        "uptime_seconds": int(uptime_secs),
+                        "critical": svc_cfg["critical"],
+                        "source": "docker"
+                    })
+                except Exception:
+                    results.append({
+                        "name": svc_name, "status": "unknown", "cpu_pct": 0, "mem_pct": 0,
+                        "mem_mb": 0, "net_in_kb": 0, "net_out_kb": 0, "uptime_seconds": 0,
+                        "critical": svc_cfg["critical"], "source": "docker_error"
+                    })
+            else:
+                # Container not found → mark as offline
+                results.append({
+                    "name": svc_name, "status": "offline", "cpu_pct": 0, "mem_pct": 0,
+                    "mem_mb": 0, "net_in_kb": 0, "net_out_kb": 0, "uptime_seconds": 0,
+                    "critical": svc_cfg["critical"], "source": "docker_missing"
+                })
+        return results
+    except Exception:
+        pass
+
+    # Fallback: use psutil process scan and host-level metrics
+    try:
+        # Collect all Python/uvicorn processes
+        process_list = []
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_info', 'create_time']):
+            try:
+                info = proc.info
+                cmdline = " ".join(info.get('cmdline') or [])
+                for svc_name in services_map:
+                    short = svc_name.replace("-service", "")
+                    if svc_name in cmdline or short in cmdline:
+                        cpu_pct = round(proc.cpu_percent(interval=0.05), 2)
+                        mem_info = proc.memory_info()
+                        mem_mb = round(mem_info.rss / (1024 * 1024), 1)
+                        uptime = int(now.timestamp() - info["create_time"])
+                        process_list.append({
+                            "name": svc_name,
+                            "status": "healthy" if cpu_pct < 80 and mem_mb < 512 else "warning",
+                            "cpu_pct": cpu_pct,
+                            "mem_pct": round((mem_mb / (psutil.virtual_memory().total / (1024 * 1024))) * 100, 2),
+                            "mem_mb": mem_mb,
+                            "net_in_kb": 0, "net_out_kb": 0,
+                            "uptime_seconds": uptime,
+                            "critical": services_map[svc_name]["critical"],
+                            "source": "psutil"
+                        })
+                        break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        # Fill in any missing services
+        found_names = {p["name"] for p in process_list}
+        for svc_name, svc_cfg in services_map.items():
+            if svc_name not in found_names:
+                process_list.append({
+                    "name": svc_name, "status": "unknown", "cpu_pct": 0, "mem_pct": 0,
+                    "mem_mb": 0, "net_in_kb": 0, "net_out_kb": 0, "uptime_seconds": 0,
+                    "critical": svc_cfg["critical"], "source": "not_found"
+                })
+        return process_list
+    except Exception as e:
+        return []
+
+def _get_host_metrics():
+    """Returns real-time host-level CPU, memory, disk, and network metrics."""
+    try:
+        cpu_pct = psutil.cpu_percent(interval=0.1)
+        cpu_count = psutil.cpu_count(logical=True)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+        net_before = psutil.net_io_counters()
+        net = net_before
+        load = [round(x, 2) for x in psutil.getloadavg()] if hasattr(psutil, 'getloadavg') else [0, 0, 0]
+        boot_ts = psutil.boot_time()
+        uptime_secs = int(datetime.datetime.utcnow().timestamp() - boot_ts)
+
+        return {
+            "hostname": socket.gethostname(),
+            "platform": platform.system(),
+            "cpu_count": cpu_count,
+            "cpu_pct": cpu_pct,
+            "cpu_load_avg": load,
+            "mem_total_gb": round(mem.total / (1024**3), 2),
+            "mem_used_gb": round(mem.used / (1024**3), 2),
+            "mem_pct": mem.percent,
+            "disk_total_gb": round(disk.total / (1024**3), 2),
+            "disk_used_gb": round(disk.used / (1024**3), 2),
+            "disk_pct": disk.percent,
+            "net_bytes_sent_mb": round(net.bytes_sent / (1024**2), 2),
+            "net_bytes_recv_mb": round(net.bytes_recv / (1024**2), 2),
+            "uptime_seconds": uptime_secs,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+def _build_time_series(services_data: list, num_points: int = 20):
+    """
+    Builds a time-series of metric snapshots from the rolling history store.
+    Adds the current snapshot, evicts old ones beyond num_points.
+    """
+    now_str = datetime.datetime.utcnow().strftime("%H:%M:%S")
+    for svc in services_data:
+        name = svc["name"]
+        if name not in _monitoring_history:
+            _monitoring_history[name] = []
+        _monitoring_history[name].append({
+            "time": now_str,
+            "cpu": svc["cpu_pct"],
+            "mem": svc["mem_pct"],
+        })
+        # Keep last num_points samples
+        if len(_monitoring_history[name]) > num_points:
+            _monitoring_history[name] = _monitoring_history[name][-num_points:]
+    return _monitoring_history
+
+def _detect_spikes(history: dict) -> list:
+    """
+    Analyzes per-service rolling history to detect CPU/memory spikes and
+    predict upcoming resource exhaustion. Returns a list of spike alerts.
+    """
+    alerts = []
+    for svc_name, samples in history.items():
+        if len(samples) < 5:
+            continue
+
+        cpu_vals = [s["cpu"] for s in samples]
+        mem_vals = [s["mem"] for s in samples]
+
+        # Moving average spike: latest > 2x avg of previous window AND > 70%
+        avg_cpu = sum(cpu_vals[:-1]) / max(len(cpu_vals) - 1, 1)
+        avg_mem = sum(mem_vals[:-1]) / max(len(mem_vals) - 1, 1)
+
+        if cpu_vals[-1] > max(avg_cpu * 1.8, 70):
+            alerts.append({
+                "service": svc_name, "metric": "cpu",
+                "current": cpu_vals[-1], "average": round(avg_cpu, 1),
+                "severity": "critical" if cpu_vals[-1] > 90 else "warning",
+                "message": f"CPU spike detected: {cpu_vals[-1]}% (avg {round(avg_cpu,1)}%)",
+                "recommendation": "Scale pods or increase CPU limits. Check for runaway processes."
+            })
+
+        if mem_vals[-1] > max(avg_mem * 1.6, 75):
+            alerts.append({
+                "service": svc_name, "metric": "memory",
+                "current": mem_vals[-1], "average": round(avg_mem, 1),
+                "severity": "critical" if mem_vals[-1] > 90 else "warning",
+                "message": f"Memory spike detected: {mem_vals[-1]}% (avg {round(avg_mem,1)}%)",
+                "recommendation": "Check for memory leaks. Restart pods if OOM is imminent."
+            })
+
+        # Monotonic growth prediction (linear extrapolation)
+        if len(mem_vals) >= 8:
+            recent = mem_vals[-8:]
+            if all(recent[i] <= recent[i+1] for i in range(len(recent) - 1)) and recent[-1] > 55:
+                # Estimate samples until 100% (linear rate)
+                rate = (recent[-1] - recent[0]) / (len(recent) - 1)
+                if rate > 0:
+                    samples_to_full = int((100 - recent[-1]) / rate)
+                    alerts.append({
+                        "service": svc_name, "metric": "memory_trend",
+                        "current": recent[-1], "average": round(sum(recent) / len(recent), 1),
+                        "severity": "predictive",
+                        "message": f"Memory growing monotonically. Predicted OOM in ~{samples_to_full} polling intervals.",
+                        "recommendation": "Pre-emptively restart service or increase memory limit before exhaustion."
+                    })
+    return alerts
+
+@app.get("/api/v1/monitoring/cluster")
+def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
+    """
+    Real-time cluster monitoring endpoint.
+    Collects host-level metrics via psutil and per-service stats via Docker SDK
+    (or psutil process scan as fallback). Detects CPU/memory spikes and predicts
+    future resource exhaustion using rolling trend analysis.
+    """
+    role = current_user.get("role", "user")
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required for monitoring data.")
+
+    now = datetime.datetime.utcnow()
+
+    # 1. Host metrics
+    host = _get_host_metrics()
+
+    # 2. Per-service metrics
+    services = _get_docker_services_metrics()
+
+    # 3. Update rolling history & build time series
+    history = _build_time_series(services)
+
+    # 4. Spike & predictive alerts
+    spike_alerts = _detect_spikes(history)
+
+    # 5. Overall cluster health
+    critical_services = [s for s in services if s["critical"]]
+    degraded_critical = [s for s in critical_services if s["status"] in ("warning", "critical", "offline", "unknown")]
+    if not degraded_critical:
+        cluster_health = "healthy"
+    elif all(s["status"] == "offline" for s in degraded_critical):
+        cluster_health = "critical"
+    else:
+        cluster_health = "degraded"
+
+    # 6. Top memory & CPU consumers
+    top_cpu = sorted(services, key=lambda x: x["cpu_pct"], reverse=True)[:3]
+    top_mem = sorted(services, key=lambda x: x["mem_pct"], reverse=True)[:3]
+
+    return {
+        "generated_at": now.isoformat() + "Z",
+        "cluster_health": cluster_health,
+        "host": host,
+        "services": services,
+        "time_series": {svc: samples for svc, samples in history.items()},
+        "spike_alerts": spike_alerts,
+        "top_cpu_consumers": top_cpu,
+        "top_mem_consumers": top_mem,
+        "summary": {
+            "total_services": len(services),
+            "healthy_services": len([s for s in services if s["status"] == "healthy"]),
+            "warning_services": len([s for s in services if s["status"] == "warning"]),
+            "critical_services": len([s for s in services if s["status"] == "critical"]),
+            "offline_services": len([s for s in services if s["status"] in ("offline", "unknown")]),
+            "spike_count": len(spike_alerts),
+        }
+    }
+
 # --- Artifacts Management ---
+
 
 class ArtifactResponse(BaseModel):
     id: str

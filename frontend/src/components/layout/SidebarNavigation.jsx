@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Cloud, GitBranch, LayoutDashboard, MessageSquareCode, Lightbulb,
   BarChart3, Settings, LogOut, Server, PanelLeftClose, PanelLeftOpen,
-  Shield, Activity, Zap
+  Shield, Activity, Zap, MonitorDot
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -77,6 +77,7 @@ export default function SidebarNavigation() {
     { name: "AI Copilot",     path: "/chat",        icon: MessageSquareCode, always: true },
     { name: "Suggestions",    path: "/suggestions", icon: Lightbulb, always: true },
     ...(userRole === "admin" ? [{ name: "Analytics",      path: "/analytics",   icon: BarChart3 }] : []),
+    ...(userRole === "admin" ? [{ name: "Monitoring",     path: "/analytics/monitoring", icon: MonitorDot }] : []),
     { name: "Integrations",   path: "/integrations",icon: Settings,   always: true },
   ];
 
