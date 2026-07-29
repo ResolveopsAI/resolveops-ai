@@ -55,6 +55,52 @@ app = FastAPI(
 def health_check():
     return {"status": "ok"}
 
+# ── Network Monitoring Daemon ───────────────────────────────────────────────
+import asyncio
+
+# Global rolling buffer for the last 60 minutes of network traffic
+server_network_history = []
+
+def read_net_dev():
+    rx_bytes = 0
+    tx_bytes = 0
+    try:
+        with open("/proc/net/dev", "r") as f:
+            lines = f.readlines()
+            for line in lines[2:]:
+                parts = line.split()
+                if len(parts) >= 10:
+                    rx_bytes += int(parts[1])
+                    tx_bytes += int(parts[9])
+    except Exception:
+        pass
+    return rx_bytes, tx_bytes
+
+async def poll_network_usage():
+    last_rx, last_tx = read_net_dev()
+    while True:
+        await asyncio.sleep(60)  # Poll every 60 seconds
+        current_rx, current_tx = read_net_dev()
+        
+        # Calculate KB/s over the last 60 seconds
+        rx_kbps = max(0, (current_rx - last_rx) / 1024 / 60)
+        tx_kbps = max(0, (current_tx - last_tx) / 1024 / 60)
+        
+        last_rx, last_tx = current_rx, current_tx
+        
+        server_network_history.append({
+            "time": datetime.datetime.utcnow().strftime("%H:%M"),
+            "net_rx": int(rx_kbps),
+            "net_tx": int(tx_kbps)
+        })
+        
+        if len(server_network_history) > 60:
+            server_network_history.pop(0)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(poll_network_usage())
+
 # ── Feature flags (resolved once at startup) ─────────────────────────────────
 _AI_RCA_CHAT_ENABLED: bool = os.getenv("AI_RCA_CHAT_ENABLED", "true").lower() == "true"
 _MCP_RCA_ENABLED: bool = os.getenv("MCP_RCA_ENABLED", "true").lower() == "true"
@@ -3103,20 +3149,32 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
             "latency": random.randint(50, 300) if aws_connected else 0
         })
         
-    # 24-hour mock for System Resource Utilization
+    # Live 60-minute mock for CPU/Memory + Real Network I/O
     system_resource_series = []
-    for i in range(24):
-        hour = base_hour + datetime.timedelta(hours=i)
+    base_min = datetime.datetime.utcnow() - datetime.timedelta(minutes=59)
+    for i in range(60):
+        minute = base_min + datetime.timedelta(minutes=i)
+        time_str = minute.strftime("%H:%M")
+        
+        # Real network data if available for this minute, otherwise 0
+        net_rx = 0
+        net_tx = 0
+        if i < len(server_network_history):
+            hist = server_network_history[i]
+            net_rx = hist["net_rx"]
+            net_tx = hist["net_tx"]
+            time_str = hist["time"]
+
         system_resource_series.append({
-            "time": hour.strftime("%H:00"),
+            "time": time_str,
             "cpu_api": random.randint(20, 60),
             "cpu_rca": random.randint(40, 85),
             "cpu_db": random.randint(10, 40),
             "mem_api": random.randint(128, 512),
             "mem_rca": random.randint(512, 2048),
             "mem_db": random.randint(256, 1024),
-            "net_rx": random.randint(100, 5000),
-            "net_tx": random.randint(50, 2000)
+            "net_rx": net_rx,
+            "net_tx": net_tx
         })
 
     return {

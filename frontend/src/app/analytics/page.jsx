@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
           {/* Network I/O */}
           <div className="border border-white/8 rounded-2xl p-5 bg-white/3 space-y-4 lg:col-span-2">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Wifi size={16} className="text-teal-400" /> Cluster Network I/O (KB/s)
+              <Wifi size={16} className="text-teal-400" /> Server Network Usage (KB/s)
             </h3>
             <div className="h-64 w-full">
               {time_series.system && time_series.system.length > 0 ? (
