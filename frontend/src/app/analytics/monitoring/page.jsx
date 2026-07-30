@@ -163,6 +163,7 @@ const fmtUptime = (s) => {
 // Main Page
 export default function MonitoringPage() {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -176,6 +177,10 @@ export default function MonitoringPage() {
   const [hostChart, setHostChart] = useState([]);
   const abortRef = useRef(null);   // AbortController for the current SSE connection
   const retryRef = useRef(null);   // setTimeout handle for reconnect
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   /**
    * Apply an incoming snapshot to state.
@@ -302,6 +307,7 @@ export default function MonitoringPage() {
   }, [openStream, fetchRESTSnapshot]);
 
   useEffect(() => {
+    if (!isMounted) return;
     const token = localStorage.getItem('jwt_token');
     if (!token) { router.push('/login'); return; }
     if (getUserRole() !== 'admin') return;
@@ -328,9 +334,27 @@ export default function MonitoringPage() {
       clearTimeout(safetyTimer);
       clearInterval(pollInterval);
     };
-  }, [router, openStream, fetchRESTSnapshot]);
+  }, [isMounted, router, openStream, fetchRESTSnapshot]);
 
-  if (getUserRole() !== 'admin') {
+  if (!isMounted || (loading && !data)) return (
+    <DashboardLayout>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 rounded-full border border-indigo-500/20 animate-ping" />
+          <div className="absolute inset-3 rounded-full border border-indigo-400/30 animate-pulse" />
+          <div className="absolute inset-5 flex items-center justify-center">
+            <Activity className="text-indigo-400 w-6 h-6 animate-spin" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-slate-200 font-semibold text-sm">Connecting to Live Stream</p>
+          <p className="text-slate-500 font-mono text-[10px] mt-1 tracking-widest">OPENING SSE CONNECTION...</p>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+
+  if (isMounted && getUserRole() !== 'admin') {
     return (
       <DashboardLayout>
         <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
