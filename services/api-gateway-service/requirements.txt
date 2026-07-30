@@ -31,4 +31,3 @@ psycopg2-binary==2.9.9
 azure-servicebus==7.12.1
 psutil==6.0.0
 docker==7.1.0
-kubernetes==29.0.0
