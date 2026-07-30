@@ -36,6 +36,20 @@ class MockDynamoTable:
                 d.pop('_sa_instance_state', None)
                 return {'Item': d}
             return {}
+    def scan(self):
+        db = SessionLocal()
+        if not db:
+            return {'Items': []}
+        try:
+            results = []
+            for instance in db.query(self.model).all():
+                d = instance.__dict__.copy()
+                d.pop('_sa_instance_state', None)
+                results.append(d)
+            return {'Items': results}
+        except Exception as e:
+            print("Scan Error:", e)
+            return {'Items': []}
         finally:
             db.close()
 

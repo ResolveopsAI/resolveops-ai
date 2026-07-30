@@ -3720,18 +3720,19 @@ def _get_user_telemetry() -> dict:
         standard_count = max(total_users - admin_count, 0)
         
         return {
-            "total_users": max(total_users, 1),
-            "admin_users": max(admin_count, 1),
+            "total_users": total_users,
+            "admin_users": admin_count,
             "standard_users": standard_count,
-            "active_sessions": max(total_users, 1),
+            "active_sessions": total_users,
             "domain": "resolveops-ai.internal"
         }
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] User telemetry query failed: {e}")
         return {
-            "total_users": 1,
-            "admin_users": 1,
+            "total_users": 0,
+            "admin_users": 0,
             "standard_users": 0,
-            "active_sessions": 1,
+            "active_sessions": 0,
             "domain": "resolveops-ai.internal"
         }
 
