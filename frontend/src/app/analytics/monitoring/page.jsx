@@ -216,6 +216,7 @@ export default function MonitoringPage() {
       }
     } catch (err) {
       console.warn("REST snapshot fetch fallback failed:", err);
+    } finally {
       setLoading(false);
     }
   }, [applySnapshot]);
@@ -242,6 +243,7 @@ export default function MonitoringPage() {
     (async () => {
       try {
         const res = await fetch(url, { signal: ctrl.signal });
+        setLoading(false);
         if (!res.ok) {
           const txt = await res.text().catch(() => `HTTP ${res.status}`);
           throw new Error(txt);
@@ -288,6 +290,7 @@ export default function MonitoringPage() {
       } catch (err) {
         if (err.name === 'AbortError') return; // intentional close — no retry
         setConnected(false);
+        setLoading(false);
         setError(`Stream disconnected: ${err.message}. Reconnecting in 3s…`);
         fetchRESTSnapshot();
         // Reconnect after 3 s
@@ -317,6 +320,11 @@ export default function MonitoringPage() {
     // Establish live SSE stream
     openStream(token);
 
+    // Safety timer: guarantee loading spinner dismisses after 1s max
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+
     // REST Polling fallback interval (runs every 3s to guarantee live data updates)
     const pollInterval = setInterval(() => {
       fetchRESTSnapshot();
@@ -332,6 +340,7 @@ export default function MonitoringPage() {
     return () => {
       if (abortRef.current) abortRef.current.abort();
       clearTimeout(retryRef.current);
+      clearTimeout(safetyTimer);
       clearInterval(pollInterval);
       window.removeEventListener('online', handleOnline);
     };
