@@ -29,6 +29,8 @@ class MockDynamoTable:
 
     def get_item(self, Key):
         db = SessionLocal()
+        if not db:
+            return {}
         try:
             instance = db.query(self.model).filter_by(**Key).first()
             if instance:
@@ -36,6 +38,9 @@ class MockDynamoTable:
                 d.pop('_sa_instance_state', None)
                 return {'Item': d}
             return {}
+        finally:
+            db.close()
+
     def scan(self):
         db = SessionLocal()
         if not db:
