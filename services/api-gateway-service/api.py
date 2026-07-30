@@ -119,7 +119,7 @@ class ApiKeyResponse(BaseModel):
 def request_otp(req: OTPRequest):
     """Generate and queue a 6-digit OTP for email verification via Service Bus."""
     # Strict Admin Invite Code verification if registering as Admin
-    if req.role == "admin":
+    if req.role in ["admin", "administrator"]:
         expected_secret = os.getenv("ADMIN_INVITE_CODE", "resolveops-admin-2026")
         if not req.admin_secret or req.admin_secret.strip() != expected_secret:
             raise HTTPException(status_code=403, detail="Invalid Administrator Invite Code. Contact system admin.")
@@ -186,8 +186,8 @@ def register_user(user: UserAuth):
         hashed_password = get_password_hash(user.password)
         user_id = str(uuid.uuid4())
 
-        role = user.role if user.role in ["user", "admin"] else "user"
-        if role == "admin":
+        role = user.role if user.role in ["user", "admin", "administrator"] else "user"
+        if role in ["admin", "administrator"]:
             expected_secret = os.getenv("ADMIN_INVITE_CODE", "resolveops-admin-2026")
             if not user.admin_secret or user.admin_secret.strip() != expected_secret:
                 raise HTTPException(status_code=403, detail="Invalid Administrator Invite Code. Authorization denied.")
@@ -3603,6 +3603,13 @@ def _detect_spikes(history: dict) -> list:
                     })
     return alerts
 
+def is_admin_user(user: dict) -> bool:
+    """Evaluates if the authenticated user has Administrator privileges by checking role."""
+    if not user:
+        return False
+    role = str(user.get("role") or "").lower()
+    return role in ["admin", "administrator"]
+
 @app.get("/api/v1/monitoring/cluster")
 def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
     """
@@ -3611,8 +3618,7 @@ def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
     (or psutil process scan as fallback). Detects CPU/memory spikes and predicts
     future resource exhaustion using rolling trend analysis.
     """
-    role = current_user.get("role", "user")
-    if role != "admin":
+    if not is_admin_user(current_user):
         raise HTTPException(status_code=403, detail="Admin access required for monitoring data.")
 
     now = datetime.datetime.utcnow()
@@ -4144,10 +4150,7 @@ async def stream_cluster_monitoring(token: str, request: Request):
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    if payload.get("role") != "admin":
+    if not is_admin_user(payload):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     def _build_snapshot() -> dict:

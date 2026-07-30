@@ -139,7 +139,11 @@ export function getUserRole() {
     const payloadBase64 = token.split('.')[1];
     const decodedJson = atob(payloadBase64);
     const payload = JSON.parse(decodedJson);
-    return payload.role || 'user';
+    const role = String(payload.role || 'user').toLowerCase();
+    if (role === 'admin' || role === 'administrator') {
+      return 'admin';
+    }
+    return role;
   } catch (e) {
     return 'user';
   }

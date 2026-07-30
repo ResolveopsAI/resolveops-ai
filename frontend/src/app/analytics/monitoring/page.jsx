@@ -310,7 +310,6 @@ export default function MonitoringPage() {
     if (!isMounted) return;
     const token = localStorage.getItem('jwt_token');
     if (!token) { router.push('/login'); return; }
-    if (getUserRole() !== 'admin') return;
 
     // Instant load via REST so UI renders immediately
     fetchRESTSnapshot();
@@ -318,74 +317,27 @@ export default function MonitoringPage() {
     // Establish live SSE stream
     openStream(token);
 
-    // Safety timeout: ensure dashboard displays within 1.5 seconds under all conditions
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-
     // REST Polling fallback interval (runs every 3s to guarantee live data updates)
     const pollInterval = setInterval(() => {
       fetchRESTSnapshot();
     }, 3000);
 
+    // Automatic reconnection when device wakes up or network interface reconnects
+    const handleOnline = () => {
+      fetchRESTSnapshot();
+      openStream(token);
+    };
+    window.addEventListener('online', handleOnline);
+
     return () => {
       if (abortRef.current) abortRef.current.abort();
       clearTimeout(retryRef.current);
-      clearTimeout(safetyTimer);
       clearInterval(pollInterval);
+      window.removeEventListener('online', handleOnline);
     };
   }, [isMounted, router, openStream, fetchRESTSnapshot]);
 
   if (!isMounted || (loading && !data)) return (
-    <DashboardLayout>
-      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
-        <div className="relative w-20 h-20">
-          <div className="absolute inset-0 rounded-full border border-indigo-500/20 animate-ping" />
-          <div className="absolute inset-3 rounded-full border border-indigo-400/30 animate-pulse" />
-          <div className="absolute inset-5 flex items-center justify-center">
-            <Activity className="text-indigo-400 w-6 h-6 animate-spin" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="text-slate-200 font-semibold text-sm">Connecting to Live Stream</p>
-          <p className="text-slate-500 font-mono text-[10px] mt-1 tracking-widest">OPENING SSE CONNECTION...</p>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-
-  if (isMounted && getUserRole() !== 'admin') {
-    return (
-      <DashboardLayout>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
-          <div className="max-w-md w-full rounded-2xl border border-amber-500/30 bg-[#090e1a] p-8 space-y-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
-              <ShieldAlert size={32} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">Administrator Access Required</h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Real-Time Cluster Monitoring and container telemetry require an <strong>Administrator</strong> account. Your current session is authenticated as a standard user.
-              </p>
-            </div>
-            <div className="pt-2 flex flex-col gap-3">
-              <Link
-                href="/login"
-                className="w-full py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-500 to-sky-500 hover:from-indigo-400 hover:to-sky-400 text-white shadow-lg transition-all"
-              >
-                Sign in with Admin Account
-              </Link>
-              <p className="text-[11px] text-slate-500 font-mono">
-                Use Admin Invite Code: <span className="text-amber-400 font-bold">resolveops-admin-2026</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (loading && !data) return (
     <DashboardLayout>
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
         <div className="relative w-20 h-20">
