@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { X, Server, Activity, Terminal, Shield, RefreshCw, CheckCircle2, AlertTriangle, Cpu, HardDrive } from "lucide-react";
 import LogPanel from "./LogPanel";
+
+import { fetchApi } from "@/lib/api";
 
 export default function ContainerDrawer({ containerName, onClose }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -15,12 +17,7 @@ export default function ContainerDrawer({ containerName, onClose }) {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("jwt_token");
-      const res = await fetch(`/api/v1/monitoring/container/${containerName}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await fetchApi(`/api/v1/monitoring/container/${containerName}`);
       setDetails(data);
     } catch (err) {
       setError(err.message || "Failed to fetch container details.");

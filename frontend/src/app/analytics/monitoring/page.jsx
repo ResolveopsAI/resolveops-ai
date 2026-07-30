@@ -626,33 +626,28 @@ export default function MonitoringPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                   <Activity size={14} className="text-emerald-400" />
-                  Pod Health Matrix (Namespace: resolveops)
+                  Pod Health Matrix
                 </h3>
-                <span className="text-[10px] text-slate-500">4 pods · click pod card to inspect</span>
+                <span className="text-[10px] text-slate-500">0 active pods</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { name: "api-gateway-service-7f89b-x2k9", status: "healthy", restarts: 0, node: "node-worker-01" },
-                  { name: "ai-rca-service-5d67f-9lpx", status: "healthy", restarts: 1, node: "node-worker-01" },
-                  { name: "mcp-server-service-3a12c-4v8m", status: "healthy", restarts: 0, node: "node-worker-01" },
-                  { name: "postgres-db-0", status: "healthy", restarts: 0, node: "node-worker-01" },
-                ].map((pod) => (
-                  <button
-                    key={pod.name}
-                    onClick={() => setSelectedPodForDrawer(pod.name)}
-                    className="text-left rounded-2xl border border-white/8 bg-[#06090f] hover:border-violet-500/40 p-4 transition-all duration-200 group cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="text-[11px] font-bold text-slate-200 truncate">{pod.name}</p>
-                      <StatusBadge status={pod.status} />
-                    </div>
-                    <p className="text-[9px] font-mono text-slate-500">Node: {pod.node}</p>
-                    <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 border-t border-white/5 pt-2 mt-3">
-                      <span>Restarts: {pod.restarts}</span>
-                      <span className="text-violet-400 font-bold">K8S POD</span>
-                    </div>
-                  </button>
-                ))}
+              
+              <div className="rounded-2xl border border-white/8 bg-[#06090f] p-8 text-center flex flex-col items-center justify-center gap-3">
+                <div className="p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                  <Server size={28} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-200">No Kubernetes Cluster Connected</h4>
+                  <p className="text-xs text-slate-400 max-w-md mt-1">
+                    Your microservices are running in <strong>Docker Compose / Host Process Mode</strong>. Click below to view your active container and service health metrics.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveRuntimeTab("docker")}
+                  className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-2"
+                >
+                  <Server size={14} />
+                  Switch to Docker Compose Containers
+                </button>
               </div>
             </div>
           </div>

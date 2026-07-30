@@ -1,7 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Search, Copy, Check, RefreshCw, ArrowDown, Terminal } from "lucide-react";
+
+import { fetchApi } from "@/lib/api";
 
 export default function LogPanel({ containerName, isK8s = false }) {
   const [logs, setLogs] = useState([]);
@@ -20,13 +22,7 @@ export default function LogPanel({ containerName, isK8s = false }) {
         ? `/api/v1/monitoring/k8s/pod/${containerName}/logs?tail=${tailCount}`
         : `/api/v1/monitoring/container/${containerName}/logs?tail=${tailCount}`;
         
-      const token = localStorage.getItem("jwt_token");
-      const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await fetchApi(endpoint);
       setLogs(data.lines || []);
     } catch (err) {
       setLogs([`[ERROR] Unable to retrieve logs for ${containerName}: ${err.message}`]);
