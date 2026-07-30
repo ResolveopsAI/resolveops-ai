@@ -1,4 +1,7 @@
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    from mcp.server import FastMCP
 
 # Import tools from domain modules
 from app.mcp.domains.aws_tools import (

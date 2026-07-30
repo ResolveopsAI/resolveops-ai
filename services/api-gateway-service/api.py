@@ -3487,7 +3487,18 @@ def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
         "generated_at": now.isoformat() + "Z",
         "cluster_health": cluster_health,
         "host": host,
-        "spike_count": len(spike_alerts),
+        "services": services,
+        "time_series": {svc: samples for svc, samples in history.items()},
+        "spike_alerts": spike_alerts,
+        "top_cpu_consumers": top_cpu,
+        "top_mem_consumers": top_mem,
+        "summary": {
+            "total_services": len(services),
+            "healthy_services": len([s for s in services if s["status"] == "healthy"]),
+            "warning_services": len([s for s in services if s["status"] == "warning"]),
+            "critical_services": len([s for s in services if s["status"] == "critical"]),
+            "offline_services": len([s for s in services if s["status"] in ("offline", "unknown")]),
+            "spike_count": len(spike_alerts),
         }
     }
 
