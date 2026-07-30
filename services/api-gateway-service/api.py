@@ -1,4 +1,5 @@
 import os
+import json
 from fastapi import FastAPI, HTTPException, Depends, Security, BackgroundTasks, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -4095,6 +4096,7 @@ async def stream_cluster_monitoring(token: str, request: Request):
     cannot set Authorization headers after the connection opens).
     """
     import asyncio
+    import json
     from fastapi.responses import StreamingResponse as _SR
 
     # Validate JWT once at stream open
