@@ -76,7 +76,7 @@ export default function SidebarNavigation() {
     ...(integrations.aws    ? [{ name: "AWS Hub",       path: "/aws",          icon: Server }] : []),
     { name: "AI Copilot",     path: "/chat",        icon: MessageSquareCode, always: true },
     { name: "Suggestions",    path: "/suggestions", icon: Lightbulb, always: true },
-    ...(userRole === "admin" ? [{ name: "Analytics",      path: "/analytics",   icon: BarChart3 }] : []),
+    { name: "Analytics",      path: "/analytics",   icon: BarChart3, always: true },
     ...(userRole === "admin" ? [{ name: "Monitoring",     path: "/analytics/monitoring", icon: MonitorDot }] : []),
     { name: "Integrations",   path: "/integrations",icon: Settings,   always: true },
   ];

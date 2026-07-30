@@ -60,11 +60,6 @@ export default function AnalyticsPage() {
       return;
     }
     
-    if (getUserRole() !== "admin") {
-      router.push("/chat");
-      return;
-    }
-
     loadAnalytics();
 
     // Auto-refresh every 60 seconds
@@ -88,8 +83,9 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { summary = {}, services = [], time_series = {}, generated_at } = analytics || {};
+  const { summary = {}, services = [], user_resources = [], time_series = {}, generated_at, role = "user" } = analytics || {};
   const aiProvider = summary.ai_provider || {};
+  const cost = summary.cost_estimation || {};
 
   return (
     <DashboardLayout>
@@ -102,7 +98,9 @@ export default function AnalyticsPage() {
               <BarChart3 className="text-indigo-400" size={24} /> Operational Analytics & Insights
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              Live operational metrics for AWS EC2 runtime, Docker services, MCP diagnostic tools, and AI-RCA investigations.
+              {role === "admin"
+                ? "System-wide metrics for EC2 Docker runtime, internal services health, error resolution, and compute cost."
+                : "Tenant-scoped metrics for your connected cloud integrations (AWS, Azure, GitHub), incident resolution, and cloud resource cost."}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -137,31 +135,31 @@ export default function AnalyticsPage() {
         {/* Operational Summary Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            title="System Operational Status"
+            title={role === "admin" ? "System Operational Status" : "Tenant Cloud Health"}
             value={summary.operational_status?.toUpperCase() || "HEALTHY"}
             statusColor={summary.operational_status === "healthy" ? "text-emerald-400" : "text-amber-400"}
-            subtext="EC2 Docker Compose cluster"
+            subtext={role === "admin" ? "EC2 Docker Compose cluster" : "Connected Cloud Integrations"}
             icon={Activity}
           />
           <MetricCard
-            title="Active Incidents"
-            value={summary.active_incidents ?? 0}
-            statusColor={summary.active_incidents > 0 ? "text-rose-400" : "text-emerald-400"}
-            subtext={`${summary.critical_incidents ?? 0} critical severity`}
-            icon={ShieldAlert}
+            title="Issues & Incidents Resolved"
+            value={`${summary.resolved_incidents ?? 0} / ${summary.total_incidents ?? 0}`}
+            statusColor="text-indigo-400"
+            subtext={`${summary.resolution_rate_pct ?? 100}% resolution rate · ${summary.avg_resolution_mins ?? 15}m MTTR`}
+            icon={CheckCircle2}
           />
           <MetricCard
-            title="Docker Services Health"
-            value={`${summary.healthy_services ?? 0} / ${summary.total_services ?? 0}`}
+            title={role === "admin" ? "Docker Services Health" : "Active Integrations"}
+            value={role === "admin" ? `${summary.healthy_services ?? 0} / ${summary.total_services ?? 0}` : `${user_resources.filter(r => r.status === 'active').length} / ${user_resources.length}`}
             statusColor={summary.degraded_services > 0 ? "text-amber-400" : "text-emerald-400"}
-            subtext={`${summary.degraded_services ?? 0} service degraded`}
+            subtext={role === "admin" ? `${summary.degraded_services ?? 0} service degraded` : "AWS CloudWatch, GitHub Actions, Azure"}
             icon={Server}
           />
           <MetricCard
-            title="AI RCA Engine"
-            value={aiProvider.display_name || aiProvider.provider || "Bedrock"}
-            statusColor={aiProvider.status === "available" ? "text-emerald-400" : "text-rose-400"}
-            subtext={`Status: ${aiProvider.status || "available"}`}
+            title={role === "admin" ? "Estimated Compute Cost" : "Cloud Resources Cost"}
+            value={`$${cost.monthly_usd || 0}/mo`}
+            statusColor="text-cyan-400"
+            subtext={`$${cost.hourly_usd || 0}/hr (${cost.breakdown?.compute_cpu_pct || 40}% CPU, ${cost.breakdown?.memory_ram_pct || 40}% RAM)`}
             icon={Zap}
           />
         </div>

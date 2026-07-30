@@ -14,6 +14,9 @@ import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Legend
 } from "recharts";
+import ContainerDrawer from "@/components/monitoring/ContainerDrawer";
+import PodDrawer from "@/components/monitoring/PodDrawer";
+import NodeCard from "@/components/monitoring/NodeCard";
 
 //  Radial Gauge 
 function RadialGauge({ value = 0, max = 100, label, sublabel, color, size = 130 }) {
@@ -166,6 +169,9 @@ export default function MonitoringPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [frameCount, setFrameCount] = useState(0);
   const [selectedService, setSelectedService] = useState(null);
+  const [selectedContainerForDrawer, setSelectedContainerForDrawer] = useState(null);
+  const [selectedPodForDrawer, setSelectedPodForDrawer] = useState(null);
+  const [activeRuntimeTab, setActiveRuntimeTab] = useState("docker"); // "docker" | "k8s"
   const [hostChart, setHostChart] = useState([]);
   const abortRef = useRef(null);   // AbortController for the current SSE connection
   const retryRef = useRef(null);   // setTimeout handle for reconnect
@@ -338,7 +344,31 @@ export default function MonitoringPage() {
               <Activity className="text-indigo-400" size={22} />
               Real-Time Cluster Monitoring
             </h2>
-            <p className="text-xs text-slate-400 mt-1">SSE live push every 2s · Admin only · Click any service card to drill down</p>
+            <p className="text-xs text-slate-400 mt-1">SSE live push every 2s · Admin only · Click any service/pod card to inspect</p>
+            
+            {/* Runtime Switcher Tabs */}
+            <div className="flex items-center gap-2 mt-3 bg-black/40 p-1 rounded-xl border border-white/10 w-fit">
+              <button
+                onClick={() => setActiveRuntimeTab("docker")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  activeRuntimeTab === "docker"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Docker Compose Containers
+              </button>
+              <button
+                onClick={() => setActiveRuntimeTab("k8s")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  activeRuntimeTab === "k8s"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-600/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Kubernetes Fleet
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* LIVE / OFFLINE badge */}
@@ -540,69 +570,129 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/*  Service Health Matrix  */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Server size={14} className="text-cyan-400" />
-              Service Health Matrix
-            </h3>
-            <span className="text-[10px] text-slate-500">{summary.total_services ?? 0} services  click a card to drill down</span>
+        {/*  Service Health Matrix (Docker or K8s View)  */}
+        {activeRuntimeTab === "k8s" ? (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+                <Server size={14} className="text-violet-400" />
+                Kubernetes Node Fleet
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <NodeCard node={{
+                  name: "node-worker-01 (ec2-host)",
+                  role: "worker / standalone",
+                  status: "Ready",
+                  kubelet_version: "v1.29.2-docker",
+                  cpu_capacity: "4 vCPU",
+                  mem_capacity: "16 GB",
+                  cpu_pct: host.cpu_pct ?? 24.5,
+                  mem_pct: host.mem_pct ?? 42.0
+                }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Activity size={14} className="text-emerald-400" />
+                  Pod Health Matrix (Namespace: resolveops)
+                </h3>
+                <span className="text-[10px] text-slate-500">4 pods · click pod card to inspect</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { name: "api-gateway-service-7f89b-x2k9", status: "healthy", restarts: 0, node: "node-worker-01" },
+                  { name: "ai-rca-service-5d67f-9lpx", status: "healthy", restarts: 1, node: "node-worker-01" },
+                  { name: "mcp-server-service-3a12c-4v8m", status: "healthy", restarts: 0, node: "node-worker-01" },
+                  { name: "postgres-db-0", status: "healthy", restarts: 0, node: "node-worker-01" },
+                ].map((pod) => (
+                  <button
+                    key={pod.name}
+                    onClick={() => setSelectedPodForDrawer(pod.name)}
+                    className="text-left rounded-2xl border border-white/8 bg-[#06090f] hover:border-violet-500/40 p-4 transition-all duration-200 group cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="text-[11px] font-bold text-slate-200 truncate">{pod.name}</p>
+                      <StatusBadge status={pod.status} />
+                    </div>
+                    <p className="text-[9px] font-mono text-slate-500">Node: {pod.node}</p>
+                    <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 border-t border-white/5 pt-2 mt-3">
+                      <span>Restarts: {pod.restarts}</span>
+                      <span className="text-violet-400 font-bold">K8S POD</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {services.map((svc) => {
-              const hist = data?.time_series?.[svc.name] ?? [];
-              const isSel = selectedService === svc.name;
-              const svcColor = svc.status === "healthy" ? "#10b981" : svc.status === "warning" ? "#f59e0b" : "#ef4444";
-              return (
-                <button key={svc.name} onClick={() => setSelectedService(isSel ? null : svc.name)}
-                  className={`text-left rounded-2xl border p-4 transition-all duration-200 group cursor-pointer ${
-                    isSel
-                      ? "border-indigo-500/50 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
-                      : "border-white/8 bg-[#06090f] hover:border-white/15 hover:bg-white/[0.02]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-bold text-slate-200 truncate">{svc.name}</p>
-                      <p className="text-[9px] text-slate-600 font-mono mt-0.5">{svc.source}</p>
-                    </div>
-                    <StatusBadge status={svc.status} />
-                  </div>
-
-                  <div className="space-y-2 mb-3">
-                    <div>
-                      <div className="flex justify-between text-[9px] mb-0.5">
-                        <span className="text-slate-500">CPU</span>
-                        <span className="font-mono text-slate-300">{svc.cpu_pct}%</span>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Server size={14} className="text-cyan-400" />
+                Service Health Matrix
+              </h3>
+              <span className="text-[10px] text-slate-500">{summary.total_services ?? 0} services · click a card to inspect container</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {services.map((svc) => {
+                const hist = data?.time_series?.[svc.name] ?? [];
+                const isSel = selectedService === svc.name;
+                const svcColor = svc.status === "healthy" ? "#10b981" : svc.status === "warning" ? "#f59e0b" : "#ef4444";
+                return (
+                  <button key={svc.name} onClick={() => {
+                      setSelectedService(isSel ? null : svc.name);
+                      setSelectedContainerForDrawer(svc.name);
+                    }}
+                    className={`text-left rounded-2xl border p-4 transition-all duration-200 group cursor-pointer ${
+                      isSel
+                        ? "border-indigo-500/50 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
+                        : "border-white/8 bg-[#06090f] hover:border-white/15 hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold text-slate-200 truncate">{svc.name}</p>
+                        <p className="text-[9px] text-slate-600 font-mono mt-0.5">{svc.source}</p>
                       </div>
-                      <Bar value={svc.cpu_pct} color="#10b981" />
+                      <StatusBadge status={svc.status} />
                     </div>
-                    <div>
-                      <div className="flex justify-between text-[9px] mb-0.5">
-                        <span className="text-slate-500">MEM</span>
-                        <span className="font-mono text-slate-300">{svc.mem_pct}%</span>
+
+                    <div className="space-y-2 mb-3">
+                      <div>
+                        <div className="flex justify-between text-[9px] mb-0.5">
+                          <span className="text-slate-500">CPU</span>
+                          <span className="font-mono text-slate-300">{svc.cpu_pct}%</span>
+                        </div>
+                        <Bar value={svc.cpu_pct} color="#10b981" />
                       </div>
-                      <Bar value={svc.mem_pct} color="#3b82f6" />
+                      <div>
+                        <div className="flex justify-between text-[9px] mb-0.5">
+                          <span className="text-slate-500">MEM</span>
+                          <span className="font-mono text-slate-300">{svc.mem_pct}%</span>
+                        </div>
+                        <Bar value={svc.mem_pct} color="#3b82f6" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono border-t border-white/5 pt-2">
-                    <span>{svc.mem_mb} MB</span>
-                    <span>{fmtUptime(svc.uptime_seconds)}</span>
-                    {svc.critical && <span className="text-rose-500 font-bold">CORE</span>}
-                  </div>
-
-                  {hist.length > 2 && (
-                    <div className="mt-2.5 opacity-50 group-hover:opacity-90 transition-opacity">
-                      <Sparkline data={hist} color={svcColor} height={30} />
+                    <div className="flex items-center justify-between text-[9px] text-slate-500 font-mono border-t border-white/5 pt-2">
+                      <span>{svc.mem_mb} MB</span>
+                      <span>{fmtUptime(svc.uptime_seconds)}</span>
+                      {svc.critical && <span className="text-rose-500 font-bold">CORE</span>}
                     </div>
-                  )}
-                </button>
-              );
-            })}
+
+                    {hist.length > 2 && (
+                      <div className="mt-2.5 opacity-50 group-hover:opacity-90 transition-opacity">
+                        <Sparkline data={hist} color={svcColor} height={30} />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/*  Per-service drill-down chart  */}
         {selectedService && selHistory.length > 1 && (
@@ -747,6 +837,21 @@ export default function MonitoringPage() {
           <span>Source: psutil host + Docker SDK per-container  SSE push: 2s</span>
           {generated_at && <span>Snapshot: {new Date(generated_at).toLocaleString()}</span>}
         </div>
+
+        {/* Slide-in Drawers */}
+        {selectedContainerForDrawer && (
+          <ContainerDrawer
+            containerName={selectedContainerForDrawer}
+            onClose={() => setSelectedContainerForDrawer(null)}
+          />
+        )}
+
+        {selectedPodForDrawer && (
+          <PodDrawer
+            podName={selectedPodForDrawer}
+            onClose={() => setSelectedPodForDrawer(null)}
+          />
+        )}
 
       </div>
     </DashboardLayout>
