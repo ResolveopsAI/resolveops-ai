@@ -561,6 +561,8 @@ export default function MonitoringPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
         {/*  AI LLM Engine & Token Usage Telemetry  */}
         <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-b from-[#090e20] to-[#06090f] p-5 space-y-4 shadow-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
