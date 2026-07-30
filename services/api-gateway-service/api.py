@@ -3459,77 +3459,84 @@ def _get_docker_services_metrics():
     except Exception as e:
         return []
 
-def _get_host_metrics():
-    """Returns real-time host-level CPU, memory, disk, and network metrics with cross-platform fallbacks."""
+import shutil
+
+def _get_aws_ec2_metadata() -> dict:
+    """Attempts to fetch AWS EC2 metadata from the IMDS endpoint (169.254.169.254)."""
     try:
-        cpu_pct = round(psutil.cpu_percent(interval=0.05), 1)
-        cpu_count = psutil.cpu_count(logical=True) or 4
-        mem = psutil.virtual_memory()
-
-        # Disk usage cross-platform fallback (C:\ for Windows, / for POSIX)
-        try:
-            disk_path = "C:\\" if os.name == 'nt' else "/"
-            disk = psutil.disk_usage(disk_path)
-            disk_total_gb = round(disk.total / (1024**3), 2)
-            disk_used_gb = round(disk.used / (1024**3), 2)
-            disk_pct = disk.percent
-        except Exception:
-            disk_total_gb = 500.0
-            disk_used_gb = 145.2
-            disk_pct = 29.0
-
-        try:
-            net = psutil.net_io_counters()
-            net_sent_mb = round(net.bytes_sent / (1024**2), 2)
-            net_recv_mb = round(net.bytes_recv / (1024**2), 2)
-        except Exception:
-            net_sent_mb = 124.5
-            net_recv_mb = 312.8
-
-        try:
-            load = [round(x, 2) for x in psutil.getloadavg()] if hasattr(psutil, 'getloadavg') else [0.45, 0.38, 0.29]
-        except Exception:
-            load = [0.45, 0.38, 0.29]
-
-        try:
-            boot_ts = psutil.boot_time()
-            uptime_secs = int(datetime.datetime.utcnow().timestamp() - boot_ts)
-        except Exception:
-            uptime_secs = 14400
-
-        return {
-            "hostname": socket.gethostname() or "resolveops-node-01",
-            "platform": platform.system() or "Linux",
-            "cpu_count": cpu_count,
-            "cpu_pct": max(cpu_pct, 1.2),
-            "cpu_load_avg": load,
-            "mem_total_gb": round(mem.total / (1024**3), 2),
-            "mem_used_gb": round(mem.used / (1024**3), 2),
-            "mem_pct": mem.percent,
-            "disk_total_gb": disk_total_gb,
-            "disk_used_gb": disk_used_gb,
-            "disk_pct": disk_pct,
-            "net_bytes_sent_mb": net_sent_mb,
-            "net_bytes_recv_mb": net_recv_mb,
-            "uptime_seconds": max(uptime_secs, 3600),
-        }
+        token_res = requests.put(
+            "http://169.254.169.254/latest/api/token",
+            headers={"X-aws-ec2-metadata-token-ttl-seconds": "60"},
+            timeout=0.5
+        )
+        headers = {}
+        if token_res.status_code == 200:
+            headers["X-aws-ec2-metadata-token"] = token_res.text.strip()
+        
+        inst_id = requests.get("http://169.254.169.254/latest/meta-data/instance-id", headers=headers, timeout=0.5).text.strip()
+        inst_type = requests.get("http://169.254.169.254/latest/meta-data/instance-type", headers=headers, timeout=0.5).text.strip()
+        az = requests.get("http://169.254.169.254/latest/meta-data/placement/availability-zone", headers=headers, timeout=0.5).text.strip()
+        return {"instance_id": inst_id, "instance_type": inst_type, "az": az}
     except Exception:
-        return {
-            "hostname": "resolveops-host",
-            "platform": "Linux",
-            "cpu_count": 4,
-            "cpu_pct": 14.5,
-            "cpu_load_avg": [0.35, 0.40, 0.28],
-            "mem_total_gb": 16.0,
-            "mem_used_gb": 6.8,
-            "mem_pct": 42.5,
-            "disk_total_gb": 250.0,
-            "disk_used_gb": 85.0,
-            "disk_pct": 34.0,
-            "net_bytes_sent_mb": 42.5,
-            "net_bytes_recv_mb": 118.2,
-            "uptime_seconds": 18000,
-        }
+        return {}
+
+def _get_host_metrics():
+    """Returns real-time host-level CPU, memory, disk, and network metrics fetched directly from OS and AWS EC2."""
+    mem = psutil.virtual_memory()
+    cpu_pct = round(psutil.cpu_percent(interval=0.1), 1)
+    cpu_count = psutil.cpu_count(logical=True) or 1
+    
+    # Real disk usage using Python standard library shutil.disk_usage
+    disk_target = "/" if os.name != 'nt' else "C:\\"
+    disk = shutil.disk_usage(disk_target)
+    disk_total_gb = round(disk.total / (1024**3), 2)
+    disk_used_gb = round(disk.used / (1024**3), 2)
+    disk_pct = round((disk.used / disk.total) * 100, 1)
+
+    net = psutil.net_io_counters()
+    net_sent_mb = round(net.bytes_sent / (1024**2), 2)
+    net_recv_mb = round(net.bytes_recv / (1024**2), 2)
+
+    load = [round(x, 2) for x in psutil.getloadavg()] if hasattr(psutil, 'getloadavg') else [0.0, 0.0, 0.0]
+    
+    boot_ts = psutil.boot_time()
+    uptime_secs = int(time.time() - boot_ts)
+
+    # Detect OS detail (Amazon Linux, Ubuntu, Windows, etc.)
+    os_name = platform.system()
+    if os.path.exists("/etc/os-release"):
+        try:
+            with open("/etc/os-release") as f:
+                for line in f:
+                    if line.startswith("PRETTY_NAME="):
+                        os_name = line.split("=")[1].strip('" \n')
+                        break
+        except Exception:
+            pass
+
+    ec2_meta = _get_aws_ec2_metadata()
+    hostname = socket.gethostname()
+    if ec2_meta.get("instance_id"):
+        hostname = f"{ec2_meta['instance_id']} ({ec2_meta.get('instance_type', '')})"
+        if ec2_meta.get("az"):
+            os_name = f"{os_name} [{ec2_meta['az']}]"
+
+    return {
+        "hostname": hostname,
+        "platform": os_name,
+        "cpu_count": cpu_count,
+        "cpu_pct": cpu_pct,
+        "cpu_load_avg": load,
+        "mem_total_gb": round(mem.total / (1024**3), 2),
+        "mem_used_gb": round(mem.used / (1024**3), 2),
+        "mem_pct": mem.percent,
+        "disk_total_gb": disk_total_gb,
+        "disk_used_gb": disk_used_gb,
+        "disk_pct": disk_pct,
+        "net_bytes_sent_mb": net_sent_mb,
+        "net_bytes_recv_mb": net_recv_mb,
+        "uptime_seconds": uptime_secs,
+    }
 
 def _build_time_series(services_data: list, num_points: int = 20):
     """
