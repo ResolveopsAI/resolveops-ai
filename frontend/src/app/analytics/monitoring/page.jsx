@@ -311,9 +311,15 @@ export default function MonitoringPage() {
     // Establish live SSE stream
     openStream(token);
 
+    // REST Polling fallback interval (runs every 3s to guarantee live data updates)
+    const pollInterval = setInterval(() => {
+      fetchRESTSnapshot();
+    }, 3000);
+
     return () => {
       if (abortRef.current) abortRef.current.abort();
       clearTimeout(retryRef.current);
+      clearInterval(pollInterval);
     };
   }, [router, openStream, fetchRESTSnapshot]);
 
@@ -391,17 +397,23 @@ export default function MonitoringPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* LIVE / OFFLINE badge */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all ${
-              connected
-                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-                : 'bg-slate-600/15 border-slate-600/20 text-slate-500'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
-              }`} />
-              {connected ? 'Live' : 'Offline'}
-            </div>
+            {/* LIVE STATUS badge */}
+            {(() => {
+              const isLive = connected || (data && !error);
+              const label = connected ? "LIVE STREAM" : data ? "LIVE (REST)" : "OFFLINE";
+              return (
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  isLive
+                    ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                    : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    isLive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                  }`} />
+                  {label}
+                </div>
+              );
+            })()}
 
             {/* Frame counter */}
             {frameCount > 0 && (
