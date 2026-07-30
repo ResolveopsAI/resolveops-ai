@@ -593,21 +593,31 @@ export default function MonitoringPage() {
         {/*  Service Health Matrix (Docker or K8s View)  */}
         {activeRuntimeTab === "k8s" ? (
           <div className="space-y-6">
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-3">
+              <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-200">No Active Kubernetes Control Plane Detected</p>
+                <p className="text-amber-400/80 text-[11px] mt-0.5">
+                  This application is currently running in <strong>Docker Compose / Standalone Host Mode</strong>. Kubernetes pods/nodes will be automatically populated once a cluster (K8s/AKS/EKS) is connected.
+                </p>
+              </div>
+            </div>
+
             <div>
               <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
                 <Server size={14} className="text-violet-400" />
-                Kubernetes Node Fleet
+                Kubernetes Node Fleet (Host Mode)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <NodeCard node={{
-                  name: "node-worker-01 (ec2-host)",
-                  role: "worker / standalone",
-                  status: "Ready",
-                  kubelet_version: "v1.29.2-docker",
-                  cpu_capacity: "4 vCPU",
-                  mem_capacity: "16 GB",
-                  cpu_pct: host.cpu_pct ?? 24.5,
-                  mem_pct: host.mem_pct ?? 42.0
+                  name: `${host.hostname || "local-host"} (Standalone)`,
+                  role: "host / process-mode",
+                  status: "No K8s Cluster",
+                  kubelet_version: "N/A (Host Mode)",
+                  cpu_capacity: `${host.cpu_count || 4} vCPU`,
+                  mem_capacity: `${host.mem_total_gb || 16} GB`,
+                  cpu_pct: host.cpu_pct ?? 0,
+                  mem_pct: host.mem_pct ?? 0
                 }} />
               </div>
             </div>
