@@ -304,7 +304,7 @@ export default function MonitoringPage() {
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
     if (!token) { router.push('/login'); return; }
-    if (getUserRole() !== 'admin') { router.push('/chat'); return; }
+    if (getUserRole() !== 'admin') return;
 
     // Instant load via REST so UI renders immediately
     fetchRESTSnapshot();
@@ -329,6 +329,37 @@ export default function MonitoringPage() {
       clearInterval(pollInterval);
     };
   }, [router, openStream, fetchRESTSnapshot]);
+
+  if (getUserRole() !== 'admin') {
+    return (
+      <DashboardLayout>
+        <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-md w-full rounded-2xl border border-amber-500/30 bg-[#090e1a] p-8 space-y-5 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+              <ShieldAlert size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">Administrator Access Required</h3>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Real-Time Cluster Monitoring and container telemetry require an <strong>Administrator</strong> account. Your current session is authenticated as a standard user.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-3">
+              <Link
+                href="/login"
+                className="w-full py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-500 to-sky-500 hover:from-indigo-400 hover:to-sky-400 text-white shadow-lg transition-all"
+              >
+                Sign in with Admin Account
+              </Link>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Use Admin Invite Code: <span className="text-amber-400 font-bold">resolveops-admin-2026</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (loading && !data) return (
     <DashboardLayout>
