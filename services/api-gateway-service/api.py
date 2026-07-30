@@ -303,21 +303,67 @@ def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)
         
     return response['Item']
 
+def _is_out_of_scope_query(message: str) -> tuple[bool, str | None]:
+    msg = message.strip().lower()
+    allowed_keywords = [
+        "cluster", "pod", "container", "docker", "kubernetes", "k8s", "aws", "azure", "gcp",
+        "ec2", "s3", "deployment", "service", "logs", "metric", "cpu", "memory", "ram",
+        "disk", "network", "ingress", "egress", "vpc", "vnet", "subnet", "gateway", "rca",
+        "incident", "alert", "error", "exception", "pipeline", "github", "workflow", "ci/cd",
+        "resolveops", "mcp", "telemetry", "cost", "billing", "cloudwatch", "devops", "sre",
+        "trace", "span", "build", "api", "database", "postgres", "redis", "node"
+    ]
+    if any(kw in msg for kw in allowed_keywords):
+        return False, None
+
+    out_of_scope_patterns = [
+        r"\bwho is (the )?(pm|prime minister|president|governor|king|queen|minister|cm|chief minister)\b",
+        r"\bwho won (the )?(match|game|world cup|ipl|super bowl|election)\b",
+        r"\bcapital of\b",
+        r"\brecipe for\b",
+        r"\bweather in\b",
+        r"\bmovie recommendation\b",
+        r"\btell me a (story|joke|riddle|song)\b",
+        r"\bwho is (shah rukh|salman|tom cruise|modi|biden|trump|obama)\b",
+        r"\bwrite a (poem|essay|fiction)\b",
+        r"\bhow to cook\b",
+        r"\bwhat is the capital\b",
+        r"\bwho created (earth|human|universe)\b"
+    ]
+    for pattern in out_of_scope_patterns:
+        if re.search(pattern, msg):
+            return True, (
+                "I am the ResolveOps AI Copilot, specialized strictly in DevSecOps, Incident Resolution, "
+                "Cloud Infrastructure Monitoring, and Root Cause Analysis. Your request appears to be outside "
+                "the operational scope of cloud systems and DevOps troubleshooting.\n\n"
+                "Please ask a question related to your cluster metrics, microservices, container logs, "
+                "AWS/Azure integrations, or CI/CD deployment pipelines."
+            )
+    return False, None
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     """
-    Chat endpoint.
-
-    When AI_RCA_CHAT_ENABLED=true  → forwards to ai-rca-service /api/v1/rca/chat
-    When AI_RCA_CHAT_ENABLED=false → uses legacy gateway RAG (requires LEGACY_GATEWAY_RAG_ENABLED=true)
-
-    Execution path is recorded on every response.
-    Raw provider errors are never returned to the frontend.
+    Chat endpoint with strict DevSecOps domain guardrails.
     """
     tenant_id = current_user.get("user_id")
     tenant_email = current_user.get("email")
     session_id = request.session_id if request.session_id else str(uuid.uuid4())
     request_id = str(uuid.uuid4())
+
+    # ── DevSecOps Domain Guardrail Gate ───────────────────────────────────────
+    is_out, refusal = _is_out_of_scope_query(request.message)
+    if is_out:
+        try:
+            store_chat_message(tenant_id=tenant_id, session_id=session_id, role="user", content=request.message)
+            store_chat_message(tenant_id=tenant_id, session_id=session_id, role="assistant", content=refusal)
+        except Exception:
+            pass
+        return ChatResponse(
+            answer=refusal,
+            session_id=session_id,
+            execution={"requestId": request_id, "executionPath": "domain_guardrail_rejected"}
+        )
 
     # ── Record user message ───────────────────────────────────────────────────
     try:

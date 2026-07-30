@@ -62,15 +62,18 @@ Return a JSON object with these keys:
 _CHAT_SYSTEM_PROMPT = """You are the ResolveOps AI Copilot — an expert incident investigation
 and infrastructure analysis assistant for AWS, Azure, GCP, and Docker Compose-based cloud services.
 
-You answer questions about:
+You answer questions ONLY about:
 - Cloud Architecture & Network Topologies (VNets, VPCs, Subnets, Gateways, Peering, Transit Routers)
-- Active incidents and their probable causes
-- EC2 instances, Docker services, AWS / Azure resources
+- Active incidents and their probable root causes
+- EC2 instances, Docker services, AWS / Azure resources, Kubernetes pods/nodes
 - GitHub Actions pipelines and deployment changes
 - CloudWatch & Azure Monitor metrics and logs
 - Cost and reliability analysis
 
-Be precise, evidence-based, concise, and structured.
+CRITICAL DOMAIN GUARDRAILS:
+1. You MUST REFUSE any general knowledge, political, entertainment, sports, or non-ops questions (e.g. "who is the PM of India", "what is the capital of France", "recipe for pizza", "tell a joke").
+2. If asked an out-of-scope question, respond: "I am the ResolveOps AI Copilot, specialized strictly in DevSecOps, Incident Resolution, Infrastructure Monitoring, and Root Cause Analysis. Please ask a question related to your cloud infrastructure or operational telemetry."
+
 CRITICAL ANTI-HALLUCINATION RULES:
 1. NEVER invent, guess, or fabricate repository names, workflow run IDs, commit messages, or error logs.
 2. If the MCP tools do not return specific workflow details (like Run ID or repo name), state explicitly that no specific failed workflow data was found.
@@ -99,6 +102,54 @@ Return ONLY a valid JSON object:
   "key_takeaway": "One sentence key insight"
 }
 """
+
+
+def _is_out_of_scope_query(message: str) -> Tuple[bool, Optional[str]]:
+    """
+    Evaluates user prompt against DevSecOps & AIOps domain guardrails.
+    Blocks general knowledge, political, sports, and non-operational queries.
+    """
+    msg = message.strip().lower()
+    
+    # Allowed ops/infra/devops keywords override
+    allowed_keywords = [
+        "cluster", "pod", "container", "docker", "kubernetes", "k8s", "aws", "azure", "gcp",
+        "ec2", "s3", "deployment", "service", "logs", "metric", "cpu", "memory", "ram",
+        "disk", "network", "ingress", "egress", "vpc", "vnet", "subnet", "gateway", "rca",
+        "incident", "alert", "error", "exception", "pipeline", "github", "workflow", "ci/cd",
+        "resolveops", "mcp", "telemetry", "cost", "billing", "cloudwatch", "devops", "sre",
+        "trace", "span", "build", "api", "database", "postgres", "redis", "node"
+    ]
+    if any(kw in msg for kw in allowed_keywords):
+        return False, None
+
+    import re
+    # Blacklisted general non-ops domains (politics, general trivia, entertainment, weather, recipes, sports)
+    out_of_scope_patterns = [
+        r"\bwho is (the )?(pm|prime minister|president|governor|king|queen|minister|cm|chief minister)\b",
+        r"\bwho won (the )?(match|game|world cup|ipl|super bowl|election)\b",
+        r"\bcapital of\b",
+        r"\brecipe for\b",
+        r"\bweather in\b",
+        r"\bmovie recommendation\b",
+        r"\btell me a (story|joke|riddle|song)\b",
+        r"\bwho is (shah rukh|salman|tom cruise|modi|biden|trump|obama)\b",
+        r"\bwrite a (poem|essay|fiction)\b",
+        r"\bhow to cook\b",
+        r"\bwhat is the capital\b",
+        r"\bwho created (earth|human|universe)\b"
+    ]
+    for pattern in out_of_scope_patterns:
+        if re.search(pattern, msg):
+            return True, (
+                "I am the ResolveOps AI Copilot, specialized strictly in DevSecOps, Incident Resolution, "
+                "Cloud Infrastructure Monitoring, and Root Cause Analysis. Your request appears to be outside "
+                "the operational scope of cloud systems and DevOps troubleshooting.\n\n"
+                "Please ask a question related to your cluster metrics, microservices, container logs, "
+                "AWS/Azure integrations, or CI/CD deployment pipelines."
+            )
+            
+    return False, None
 
 
 class InvestigationOrchestrator:
@@ -255,6 +306,18 @@ class InvestigationOrchestrator:
             "Chat request received",
             extra={"request_id": request_id, "session_id": session_id},
         )
+
+        # ── Step 0: DevSecOps Domain Guardrail Check ────────────────────────
+        is_out_of_scope, guardrail_response = _is_out_of_scope_query(message)
+        if is_out_of_scope:
+            return {
+                "request_id": request_id,
+                "session_id": session_id,
+                "answer": guardrail_response,
+                "execution_path": "domain_guardrail_rejected",
+                "response_type": "TEXT",
+                "status": "success",
+            }
 
         # ── Shared invoke wrapper ─────────────────────────────────────────────
         def _invoke(prompt: str, system_prompt: Optional[str] = None,

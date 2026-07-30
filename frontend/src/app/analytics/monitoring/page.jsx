@@ -312,6 +312,11 @@ export default function MonitoringPage() {
     // Establish live SSE stream
     openStream(token);
 
+    // Safety timeout: ensure dashboard displays within 1.5 seconds under all conditions
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
     // REST Polling fallback interval (runs every 3s to guarantee live data updates)
     const pollInterval = setInterval(() => {
       fetchRESTSnapshot();
@@ -320,11 +325,12 @@ export default function MonitoringPage() {
     return () => {
       if (abortRef.current) abortRef.current.abort();
       clearTimeout(retryRef.current);
+      clearTimeout(safetyTimer);
       clearInterval(pollInterval);
     };
   }, [router, openStream, fetchRESTSnapshot]);
 
-  if (loading) return (
+  if (loading && !data) return (
     <DashboardLayout>
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
         <div className="relative w-20 h-20">
