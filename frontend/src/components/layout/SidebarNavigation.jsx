@@ -13,9 +13,9 @@ import { fetchApi, getUserRole } from "@/lib/api";
 const LOGO = (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect width="28" height="28" rx="7" fill="url(#lg)" />
-    <!-- Hexagonal Ops Shield -->
+    {/* Hexagonal Ops Shield */}
     <path d="M14 5L22 9.5V18.5L14 23L6 18.5V9.5L14 5Z" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinejoin="round" fill="rgba(255,255,255,0.06)"/>
-    <!-- AI Incident Resolution Waveform Pulse -->
+    {/* AI Incident Resolution Waveform Pulse */}
     <path d="M8.5 14H11.5L13 10.5L15 17.5L16.5 12.5L17.5 14H19.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     <circle cx="14" cy="14" r="1.5" fill="white" />
     <defs>

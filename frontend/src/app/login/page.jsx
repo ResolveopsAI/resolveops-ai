@@ -12,9 +12,9 @@ import {
 const LogoMark = ({ size = 40 }) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
     <rect width="40" height="40" rx="10" fill="url(#llg)" />
-    <!-- Hexagonal Ops Shield -->
+    {/* Hexagonal Ops Shield */}
     <path d="M20 7L31 13.5V26.5L20 33L9 26.5V13.5L20 7Z" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(255,255,255,0.06)"/>
-    <!-- AI Incident Resolution Waveform Pulse -->
+    {/* AI Incident Resolution Waveform Pulse */}
     <path d="M12 20H16.5L18.5 15L21.5 25L23.5 18L25 20H28" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
     <circle cx="20" cy="20" r="2" fill="white" />
     <defs>
