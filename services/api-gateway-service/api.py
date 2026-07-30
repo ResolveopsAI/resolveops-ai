@@ -96,6 +96,8 @@ class UserAuth(BaseModel):
 class OTPRequest(BaseModel):
     email: str
     full_name: str
+    role: Optional[str] = "user"
+    admin_secret: Optional[str] = None
 
 # In-memory OTP store: {email: {"otp": "123456", "full_name": "John", "expires": timestamp}}
 otp_store: dict = {}
@@ -119,9 +121,11 @@ class ApiKeyResponse(BaseModel):
 def request_otp(req: OTPRequest):
     """Generate and queue a 6-digit OTP for email verification via Service Bus."""
     # Strict Admin Invite Code verification if registering as Admin
-    if req.role in ["admin", "administrator"]:
+    req_role = (getattr(req, "role", None) or "user").lower()
+    if req_role in ["admin", "administrator"]:
         expected_secret = os.getenv("ADMIN_INVITE_CODE", "resolveops-admin-2026")
-        if not req.admin_secret or req.admin_secret.strip() != expected_secret:
+        admin_secret = getattr(req, "admin_secret", None) or ""
+        if not admin_secret or admin_secret.strip() != expected_secret:
             raise HTTPException(status_code=403, detail="Invalid Administrator Invite Code. Contact system admin.")
 
     # Check if email already registered
@@ -135,8 +139,8 @@ def request_otp(req: OTPRequest):
     otp_store[req.email] = {
         "otp": otp_code,
         "full_name": req.full_name,
-        "role": req.role,
-        "admin_secret": req.admin_secret,
+        "role": getattr(req, "role", "user"),
+        "admin_secret": getattr(req, "admin_secret", None),
         "expires": expires_at  # 2-minute TTL
     }
 
