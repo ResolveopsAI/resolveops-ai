@@ -8,7 +8,7 @@ import {
   Activity, Cpu, HardDrive, Wifi, Server, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, ShieldAlert, BarChart3,
   TrendingUp, Clock, MemoryStick, Eye, ChevronRight, AlertCircle,
-  Bot, Sparkles, Zap, Coins, MessageSquare
+  Bot, Sparkles, Zap, Coins, MessageSquare, Users, UserCheck, Globe, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -366,7 +366,7 @@ export default function MonitoringPage() {
 
   const {
     host = {}, services = [], summary = {}, spike_alerts = [],
-    top_cpu_consumers = [], top_mem_consumers = [], ai_telemetry = {}, cluster_health, generated_at
+    top_cpu_consumers = [], top_mem_consumers = [], ai_telemetry = {}, user_telemetry = {}, cluster_health, generated_at
   } = data || {};
 
   const effectiveClusterHealth = cluster_health || (services.length > 0 ? (services.some(s => s.status === 'critical') ? 'critical' : services.some(s => s.status === 'warning') ? 'degraded' : 'healthy') : 'healthy');
@@ -724,6 +724,96 @@ export default function MonitoringPage() {
                 style={{ width: `${((ai_telemetry.completion_tokens || 18900) / (ai_telemetry.total_tokens || 57300)) * 100}%` }}
                 title="Completion Tokens"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Active User & Platform Session Telemetry */}
+        <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-b from-[#091424] to-[#06090f] p-5 space-y-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                <Users size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white tracking-tight">Active User & Platform Session Telemetry</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                    Domain: {user_telemetry.domain || "resolveops-ai.internal"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                  Tenant Identity Store: <span className="text-sky-300 font-semibold">PostgreSQL Users Table</span> · Real-time User Database & Active Sessions
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-sky-950/40 border border-sky-500/20 px-3 py-1.5 rounded-xl text-xs font-mono text-sky-300">
+              <UserCheck size={14} className="text-sky-400" />
+              <span>Active Sessions: <strong>{user_telemetry.active_sessions || 1} online</strong></span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Total Registered Users */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Registered Users</span>
+                <Users size={15} className="text-sky-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-white tracking-tight">
+                {user_telemetry.total_users || 1}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Database Identity Store</span>
+                <span className="text-sky-400 font-semibold">Verified DB</span>
+              </div>
+            </div>
+
+            {/* Active Online Sessions */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Active Sessions</span>
+                <UserCheck size={15} className="text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
+                {user_telemetry.active_sessions || 1}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Current Real-time Load</span>
+                <span className="text-emerald-400 font-semibold">Online</span>
+              </div>
+            </div>
+
+            {/* Administrators */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Admin Accounts</span>
+                <ShieldCheck size={15} className="text-amber-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-amber-400 tracking-tight">
+                {user_telemetry.admin_users || 1}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>RBAC Privilege Level</span>
+                <span className="text-amber-400 font-semibold">Full Control</span>
+              </div>
+            </div>
+
+            {/* Standard Users */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Standard Devs</span>
+                <Globe size={15} className="text-indigo-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-indigo-400 tracking-tight">
+                {user_telemetry.standard_users ?? 0}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Domain Tenant</span>
+                <span className="text-indigo-400 font-semibold">ResolveOps AI</span>
+              </div>
             </div>
           </div>
         </div>
