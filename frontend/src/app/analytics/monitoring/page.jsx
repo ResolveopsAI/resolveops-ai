@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { getUserRole } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 import {
   Activity, Cpu, HardDrive, Wifi, Server, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, ShieldAlert, BarChart3,
@@ -201,6 +201,19 @@ export default function MonitoringPage() {
     }
   }, []);
 
+  /** Fetch initial data via REST for immediate render and fallback */
+  const fetchRESTSnapshot = useCallback(async () => {
+    try {
+      const snapshot = await fetchApi('/api/v1/monitoring/cluster');
+      if (snapshot) {
+        applySnapshot(snapshot);
+      }
+    } catch (err) {
+      console.warn("REST snapshot fetch fallback failed:", err);
+      setLoading(false);
+    }
+  }, [applySnapshot]);
+
   /**
    * Open an SSE stream to /api/v1/monitoring/cluster/stream.
    * The server pushes a JSON snapshot every 2 s over the same connection.
@@ -270,7 +283,7 @@ export default function MonitoringPage() {
         if (err.name === 'AbortError') return; // intentional close — no retry
         setConnected(false);
         setError(`Stream disconnected: ${err.message}. Reconnecting in 3s…`);
-        setLoading(false);
+        fetchRESTSnapshot();
         // Reconnect after 3 s
         retryRef.current = setTimeout(() => {
           const t = localStorage.getItem('jwt_token');
@@ -278,24 +291,31 @@ export default function MonitoringPage() {
         }, 3000);
       }
     })();
-  }, [applySnapshot]);
+  }, [applySnapshot, fetchRESTSnapshot]);
 
   /** Manual re-connect: abort + reopen immediately. */
   const handleRefresh = useCallback(() => {
+    fetchRESTSnapshot();
     const token = localStorage.getItem('jwt_token');
     if (token) openStream(token);
-  }, [openStream]);
+  }, [openStream, fetchRESTSnapshot]);
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
     if (!token) { router.push('/login'); return; }
     if (getUserRole() !== 'admin') { router.push('/chat'); return; }
+
+    // Instant load via REST so UI renders immediately
+    fetchRESTSnapshot();
+
+    // Establish live SSE stream
     openStream(token);
+
     return () => {
       if (abortRef.current) abortRef.current.abort();
       clearTimeout(retryRef.current);
     };
-  }, [router, openStream]);
+  }, [router, openStream, fetchRESTSnapshot]);
 
   if (loading) return (
     <DashboardLayout>

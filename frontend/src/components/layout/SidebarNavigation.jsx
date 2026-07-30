@@ -13,12 +13,16 @@ import { fetchApi, getUserRole } from "@/lib/api";
 const LOGO = (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect width="28" height="28" rx="7" fill="url(#lg)" />
-    <path d="M8 14l4 4 8-8" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="14" cy="14" r="6" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" fill="none"/>
+    <!-- Hexagonal Ops Shield -->
+    <path d="M14 5L22 9.5V18.5L14 23L6 18.5V9.5L14 5Z" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinejoin="round" fill="rgba(255,255,255,0.06)"/>
+    <!-- AI Incident Resolution Waveform Pulse -->
+    <path d="M8.5 14H11.5L13 10.5L15 17.5L16.5 12.5L17.5 14H19.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="14" cy="14" r="1.5" fill="white" />
     <defs>
       <linearGradient id="lg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
         <stop stopColor="#0ea5e9"/>
-        <stop offset="1" stopColor="#6366f1"/>
+        <stop offset="0.5" stopColor="#6366f1"/>
+        <stop offset="1" stopColor="#8b5cf6"/>
       </linearGradient>
     </defs>
   </svg>
