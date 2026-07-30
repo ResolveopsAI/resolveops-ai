@@ -51,7 +51,7 @@ function RegisterForm() {
   const handleRequestOtp = async (e) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      await fetchApi("/request-otp", { method: "POST", body: JSON.stringify({ email: regEmail, full_name: fullName }) });
+      await fetchApi("/request-otp", { method: "POST", body: JSON.stringify({ email: regEmail, full_name: fullName, role: regRole, admin_secret: adminSecret }) });
       setSuccess(`OTP sent to ${regEmail}`);
       setStep("otp");
     } catch (err) { setError(err.message || "Failed to send OTP."); }

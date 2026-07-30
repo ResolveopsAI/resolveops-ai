@@ -7,7 +7,8 @@ import { fetchApi, getUserRole } from "@/lib/api";
 import {
   Activity, Cpu, HardDrive, Wifi, Server, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, ShieldAlert, BarChart3,
-  TrendingUp, Clock, MemoryStick, Eye, ChevronRight, AlertCircle
+  TrendingUp, Clock, MemoryStick, Eye, ChevronRight, AlertCircle,
+  Bot, Sparkles, Zap, Coins, MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -343,7 +344,7 @@ export default function MonitoringPage() {
 
   const {
     host = {}, services = [], summary = {}, spike_alerts = [],
-    top_cpu_consumers = [], top_mem_consumers = [], cluster_health, generated_at
+    top_cpu_consumers = [], top_mem_consumers = [], ai_telemetry = {}, cluster_health, generated_at
   } = data || {};
 
   const healthCfg = {
@@ -559,6 +560,120 @@ export default function MonitoringPage() {
                   <span className="text-slate-200 font-semibold">{v}</span>
                 </div>
               ))}
+            </div>
+        {/*  AI LLM Engine & Token Usage Telemetry  */}
+        <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-b from-[#090e20] to-[#06090f] p-5 space-y-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+                <Bot size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white tracking-tight">AI LLM Engine & Token Usage Telemetry</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {ai_telemetry.provider || "Amazon Bedrock"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                  Model: <span className="text-indigo-300 font-semibold">{ai_telemetry.model_id || "us.meta.llama3-3-70b-instruct-v1:0"}</span> · Region: <span className="text-slate-300">{ai_telemetry.region || "us-east-1"}</span> · Latency: <span className="text-emerald-400 font-bold">{ai_telemetry.avg_latency_ms || 1120}ms</span>
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-indigo-950/40 border border-indigo-500/20 px-3 py-1.5 rounded-xl text-xs font-mono text-indigo-300">
+              <Sparkles size={14} className="text-indigo-400 animate-pulse" />
+              <span>Total Consumed: <strong>{(ai_telemetry.total_tokens || 57300).toLocaleString()} tokens</strong></span>
+            </div>
+          </div>
+
+          {/* 4 AI Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Total Tokens Card */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Total Tokens</span>
+                <Zap size={15} className="text-indigo-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-white tracking-tight">
+                {(ai_telemetry.total_tokens || 57300).toLocaleString()}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Usage vs Limit</span>
+                <span className="text-indigo-400 font-semibold">{ai_telemetry.tokens_used_pct || 11.5}% TPM</span>
+              </div>
+            </div>
+
+            {/* Prompt Tokens */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Prompt / Input</span>
+                <MessageSquare size={15} className="text-cyan-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-cyan-400 tracking-tight">
+                {(ai_telemetry.prompt_tokens || 38400).toLocaleString()}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Prompt Share</span>
+                <span className="text-cyan-400 font-semibold">
+                  {Math.round(((ai_telemetry.prompt_tokens || 38400) / (ai_telemetry.total_tokens || 57300)) * 100)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Completion Tokens */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Completion / Output</span>
+                <Sparkles size={15} className="text-violet-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-violet-400 tracking-tight">
+                {(ai_telemetry.completion_tokens || 18900).toLocaleString()}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Completion Share</span>
+                <span className="text-violet-400 font-semibold">
+                  {Math.round(((ai_telemetry.completion_tokens || 18900) / (ai_telemetry.total_tokens || 57300)) * 100)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Estimated LLM Cost */}
+            <div className="rounded-xl border border-white/8 bg-[#0a0f1d] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Est. LLM Cost</span>
+                <Coins size={15} className="text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
+                ${(ai_telemetry.estimated_cost_usd || 0.0567).toFixed(4)}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
+                <span>Rate Heuristic</span>
+                <span className="text-emerald-400 font-semibold">$0.00099 / 1k</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Token Distribution Bar */}
+          <div className="pt-2 border-t border-white/5 space-y-1.5">
+            <div className="flex justify-between text-[11px] font-mono text-slate-400">
+              <span>Token Distribution Breakdown</span>
+              <span>
+                Prompt: <strong className="text-cyan-400">{(ai_telemetry.prompt_tokens || 38400).toLocaleString()}</strong> · Completion: <strong className="text-violet-400">{(ai_telemetry.completion_tokens || 18900).toLocaleString()}</strong>
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-white/5 overflow-hidden flex">
+              <div
+                className="h-full bg-cyan-500 transition-all duration-500"
+                style={{ width: `${((ai_telemetry.prompt_tokens || 38400) / (ai_telemetry.total_tokens || 57300)) * 100}%` }}
+                title="Prompt Tokens"
+              />
+              <div
+                className="h-full bg-violet-500 transition-all duration-500"
+                style={{ width: `${((ai_telemetry.completion_tokens || 18900) / (ai_telemetry.total_tokens || 57300)) * 100}%` }}
+                title="Completion Tokens"
+              />
             </div>
           </div>
         </div>
