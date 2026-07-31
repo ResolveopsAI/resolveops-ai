@@ -29,9 +29,12 @@ from database import (
 )
 import notifications
 from predictive_engine import PredictiveEngine
-from pg_database import init_pg_db, get_db, Artifact
+from pg_database import init_pg_db, get_db, Artifact, AuditLog, ContainerAction
 from mcp_security import verify_mcp_service
 from storage import init_storage, upload_artifact_blob, download_artifact_blob
+from auth.authorization import require_permission
+from auth.roles import get_role_permissions
+from audit import log_audit_event
 
 # Initialize Predictive Engine
 predictive_engine = PredictiveEngine()
@@ -4429,5 +4432,455 @@ async def clear_data_endpoint(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to clear data.")
     return {"message": "Data cleared successfully."}
 
+# ==============================================================================
+# CONTAINER VISIBILITY & LIVE LOGS ENDPOINTS (PHASE 3)
+# ==============================================================================
+DOCKER_EVIDENCE_URL = os.getenv("DOCKER_EVIDENCE_URL", "http://docker-evidence-adapter:8000")
+DOCKER_OPERATIONS_URL = os.getenv("DOCKER_OPERATIONS_URL", "http://docker-operations-service:8000")
+INTERNAL_SERVICE_TOKEN = os.getenv("INTERNAL_SERVICE_TOKEN", "internal-dev-token-secret")
+
+
+@app.get("/api/v1/containers")
+def proxy_list_containers(current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:read' denied.")
+
+    try:
+        res = requests.get(f"{DOCKER_EVIDENCE_URL}/api/v1/containers", timeout=5)
+        res.raise_for_status()
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Docker evidence adapter unreachable: {e}")
+
+
+@app.get("/api/v1/containers/{service_name}")
+def proxy_get_container(service_name: str, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:read' denied.")
+
+    try:
+        res = requests.get(f"{DOCKER_EVIDENCE_URL}/api/v1/containers/{service_name}", timeout=5)
+        if res.status_code == 403:
+            raise HTTPException(status_code=403, detail=res.json().get("detail", "Service access denied."))
+        if res.status_code == 404:
+            raise HTTPException(status_code=404, detail=res.json().get("detail", "Container not found."))
+        res.raise_for_status()
+        return res.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Docker evidence adapter error: {e}")
+
+
+@app.get("/api/v1/containers/{service_name}/stats")
+def proxy_get_container_stats(service_name: str, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:read' denied.")
+
+    try:
+        res = requests.get(f"{DOCKER_EVIDENCE_URL}/api/v1/containers/{service_name}/stats", timeout=5)
+        res.raise_for_status()
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Docker evidence adapter error: {e}")
+
+
+@app.get("/api/v1/containers/{service_name}/logs")
+def proxy_get_container_logs(
+    service_name: str,
+    tail: int = 200,
+    since_minutes: Optional[int] = None,
+    search: Optional[str] = None,
+    level: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:logs" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:logs' denied.")
+
+    params = {"tail": tail}
+    if since_minutes:
+        params["since_minutes"] = since_minutes
+    if search:
+        params["search"] = search
+    if level:
+        params["level"] = level
+
+    try:
+        res = requests.get(f"{DOCKER_EVIDENCE_URL}/api/v1/containers/{service_name}/logs", params=params, timeout=10)
+        if res.status_code in (403, 404):
+            raise HTTPException(status_code=res.status_code, detail=res.json().get("detail"))
+        res.raise_for_status()
+
+        # Audit log read
+        log_audit_event(
+            action="container:read_logs",
+            actor_user_id=current_user.get("user_id"),
+            actor_email=current_user.get("email"),
+            actor_role=role,
+            target_type="container",
+            target_name=service_name,
+            sanitized_parameters=params
+        )
+
+        return res.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Docker evidence adapter error: {e}")
+
+
+@app.get("/api/v1/containers/{service_name}/logs/stream")
+async def proxy_stream_container_logs(service_name: str, request: Request, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:logs" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:logs' denied.")
+
+    log_audit_event(
+        action="container:stream_logs_start",
+        actor_user_id=current_user.get("user_id"),
+        actor_email=current_user.get("email"),
+        actor_role=role,
+        target_type="container",
+        target_name=service_name
+    )
+
+    client = httpx.AsyncClient(timeout=None)
+    url = f"{DOCKER_EVIDENCE_URL}/api/v1/containers/{service_name}/logs/stream"
+
+    async def event_generator():
+        try:
+            async with client.stream("GET", url) as response:
+                async for chunk in response.aiter_text():
+                    if await request.is_disconnected():
+                        break
+                    yield chunk
+        finally:
+            await client.aclose()
+            log_audit_event(
+                action="container:stream_logs_end",
+                actor_user_id=current_user.get("user_id"),
+                actor_email=current_user.get("email"),
+                actor_role=role,
+                target_type="container",
+                target_name=service_name
+            )
+
+    from fastapi.responses import StreamingResponse
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ==============================================================================
+# CONTROLLED CONTAINER RESTART APPROVAL ENDPOINTS (PHASE 5)
+# ==============================================================================
+class RestartRequestBody(BaseModel):
+    service_name: str
+    reason: str
+
+
+class RestartApprovalBody(BaseModel):
+    pass
+
+
+class RestartRejectionBody(BaseModel):
+    reason: str
+
+
+@app.post("/api/v1/container-actions/restart-requests")
+def proxy_create_restart_request(body: RestartRequestBody, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:restart_request" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:restart_request' denied.")
+
+    email = current_user.get("email", "user@resolveops.ai")
+    payload = {
+        "service_name": body.service_name,
+        "reason": body.reason,
+        "requested_by": email,
+    }
+    headers = {"X-Internal-Token": INTERNAL_SERVICE_TOKEN}
+
+    try:
+        res = requests.post(
+            f"{DOCKER_OPERATIONS_URL}/api/v1/container-actions/restart-requests",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        if res.status_code in (400, 403, 404):
+            raise HTTPException(status_code=res.status_code, detail=res.json().get("detail"))
+        res.raise_for_status()
+
+        action_data = res.json()
+
+        log_audit_event(
+            action="container:restart_request",
+            actor_user_id=current_user.get("user_id"),
+            actor_email=email,
+            actor_role=role,
+            target_type="container",
+            target_name=body.service_name,
+            reason=body.reason,
+            approval_id=action_data.get("action_id"),
+            sanitized_parameters=payload
+        )
+
+        return action_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Operations service error: {e}")
+
+
+@app.get("/api/v1/container-actions")
+def proxy_list_container_actions(service_name: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:read' denied.")
+
+    params = {}
+    if service_name:
+        params["service_name"] = service_name
+    headers = {"X-Internal-Token": INTERNAL_SERVICE_TOKEN}
+
+    try:
+        res = requests.get(f"{DOCKER_OPERATIONS_URL}/api/v1/container-actions", params=params, headers=headers, timeout=5)
+        res.raise_for_status()
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Operations service error: {e}")
+
+
+@app.get("/api/v1/container-actions/{action_id}")
+def proxy_get_container_action(action_id: str, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:read' denied.")
+
+    headers = {"X-Internal-Token": INTERNAL_SERVICE_TOKEN}
+    try:
+        res = requests.get(f"{DOCKER_OPERATIONS_URL}/api/v1/container-actions/{action_id}", headers=headers, timeout=5)
+        if res.status_code == 404:
+            raise HTTPException(status_code=404, detail="Action not found.")
+        res.raise_for_status()
+        return res.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Operations service error: {e}")
+
+
+@app.post("/api/v1/container-actions/{action_id}/approve")
+def proxy_approve_container_action(action_id: str, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:restart_approve" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:restart_approve' denied.")
+
+    email = current_user.get("email", "user@resolveops.ai")
+    payload = {
+        "approved_by": email,
+        "approver_role": role,
+    }
+    headers = {"X-Internal-Token": INTERNAL_SERVICE_TOKEN}
+
+    try:
+        res = requests.post(
+            f"{DOCKER_OPERATIONS_URL}/api/v1/container-actions/{action_id}/approve",
+            json=payload,
+            headers=headers,
+            timeout=150
+        )
+        if res.status_code in (400, 403, 404):
+            raise HTTPException(status_code=res.status_code, detail=res.json().get("detail"))
+        res.raise_for_status()
+
+        result = res.json()
+
+        log_audit_event(
+            action="container:restart_approve_and_execute",
+            actor_user_id=current_user.get("user_id"),
+            actor_email=email,
+            actor_role=role,
+            target_type="container",
+            target_name=result.get("service_name"),
+            approval_id=action_id,
+            status=result.get("status"),
+            previous_state=result.get("before_state"),
+            resulting_state=result.get("after_state"),
+            error_message=result.get("error_message")
+        )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Operations service error: {e}")
+
+
+@app.post("/api/v1/container-actions/{action_id}/reject")
+def proxy_reject_container_action(action_id: str, body: RestartRejectionBody, current_user: dict = Depends(get_current_user)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "containers:restart_approve" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'containers:restart_approve' denied.")
+
+    email = current_user.get("email", "user@resolveops.ai")
+    payload = {
+        "rejected_by": email,
+        "reason": body.reason,
+    }
+    headers = {"X-Internal-Token": INTERNAL_SERVICE_TOKEN}
+
+    try:
+        res = requests.post(
+            f"{DOCKER_OPERATIONS_URL}/api/v1/container-actions/{action_id}/reject",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        if res.status_code in (400, 403, 404):
+            raise HTTPException(status_code=res.status_code, detail=res.json().get("detail"))
+        res.raise_for_status()
+
+        result = res.json()
+
+        log_audit_event(
+            action="container:restart_reject",
+            actor_user_id=current_user.get("user_id"),
+            actor_email=email,
+            actor_role=role,
+            target_type="container",
+            target_name=result.get("service_name"),
+            approval_id=action_id,
+            reason=body.reason,
+            status="rejected"
+        )
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Operations service error: {e}")
+
+
+# ==============================================================================
+# AUDIT LOG GOVERNANCE ENDPOINTS (PHASE 2 & 8)
+# ==============================================================================
+@app.get("/api/v1/audit-logs")
+def get_audit_logs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    actor: Optional[str] = None,
+    action: Optional[str] = None,
+    target: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "audit:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'audit:read' denied.")
+
+    if not db:
+        return {"items": [], "total": 0, "page": page, "pages": 0}
+
+    query = db.query(AuditLog)
+
+    if actor:
+        query = query.filter(AuditLog.actor_email.ilike(f"%{actor}%"))
+    if action:
+        query = query.filter(AuditLog.action.ilike(f"%{action}%"))
+    if target:
+        query = query.filter(AuditLog.target_name.ilike(f"%{target}%"))
+    if status:
+        query = query.filter(AuditLog.status == status.lower())
+
+    total = query.count()
+    items = query.order_by(AuditLog.timestamp.desc()).offset((page - 1) * limit).limit(limit).all()
+
+    return {
+        "items": [
+            {
+                "id": log.id,
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+                "actor_user_id": log.actor_user_id,
+                "actor_email": log.actor_email,
+                "actor_role": log.actor_role,
+                "action": log.action,
+                "target_type": log.target_type,
+                "target_name": log.target_name,
+                "request_id": log.request_id,
+                "correlation_id": log.correlation_id,
+                "approval_id": log.approval_id,
+                "status": log.status,
+                "reason": log.reason,
+                "sanitized_parameters": log.sanitized_parameters,
+                "previous_state": log.previous_state,
+                "resulting_state": log.resulting_state,
+                "error_code": log.error_code,
+                "error_message": log.error_message,
+                "event_hash": log.event_hash,
+                "previous_event_hash": log.previous_event_hash,
+            }
+            for log in items
+        ],
+        "total": total,
+        "page": page,
+        "pages": (total + limit - 1) // limit if limit else 1,
+    }
+
+
+@app.get("/api/v1/audit-logs/{id}")
+def get_audit_log_by_id(id: str, current_user: dict = Depends(get_current_user), db = Depends(get_db)):
+    role = current_user.get("role", "developer")
+    permissions = get_role_permissions(role)
+    if "audit:read" not in permissions:
+        raise HTTPException(status_code=403, detail="Permission 'audit:read' denied.")
+
+    if not db:
+        raise HTTPException(status_code=500, detail="Database connection unavailable.")
+
+    log = db.query(AuditLog).filter(AuditLog.id == id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Audit record not found.")
+
+    return {
+        "id": log.id,
+        "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+        "actor_user_id": log.actor_user_id,
+        "actor_email": log.actor_email,
+        "actor_role": log.actor_role,
+        "action": log.action,
+        "target_type": log.target_type,
+        "target_name": log.target_name,
+        "request_id": log.request_id,
+        "correlation_id": log.correlation_id,
+        "approval_id": log.approval_id,
+        "status": log.status,
+        "reason": log.reason,
+        "sanitized_parameters": log.sanitized_parameters,
+        "previous_state": log.previous_state,
+        "resulting_state": log.resulting_state,
+        "error_code": log.error_code,
+        "error_message": log.error_message,
+        "event_hash": log.event_hash,
+        "previous_event_hash": log.previous_event_hash,
+    }
+
+
 if __name__ == "__main__":
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+

@@ -5,3 +5,4 @@ pydantic
 azure-servicebus==7.12.1
 azure-identity==1.17.1
 aiohttp
+httpx

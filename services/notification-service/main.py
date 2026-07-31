@@ -2,21 +2,41 @@ import os
 import json
 import asyncio
 import logging
-from fastapi import FastAPI
-from notification_routes import send_otp_email
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
 
-app = FastAPI(title="notification-service")
+from notification_routes import send_otp_email
+from app.dispatcher import dispatch_alert_event
+
+app = FastAPI(title="notification-service", version="2.0.0")
 logger = logging.getLogger("notification-service")
 logging.basicConfig(level=logging.INFO)
+
+
+class AlertEventPayload(BaseModel):
+    event_id: str
+    source: str = "ResolveOps AI"
+    service: str
+    severity: str  # CRITICAL, ERROR, WARNING, INFO
+    title: str
+    summary: str
+    timestamp: str
+    incident_id: Optional[str] = None
+    evidence_reference: Optional[str] = None
+    deduplication_key: Optional[str] = None
+    routing_tags: Optional[Dict[str, Any]] = None
+
 
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(consume_service_bus())
 
+
 async def consume_service_bus():
     sb_fqdn = os.getenv("SERVICE_BUS_FQDN")
     sb_queue = os.getenv("SERVICE_BUS_QUEUE_NAME", "notification-requested")
-    
+
     if not sb_fqdn:
         logger.warning("SERVICE_BUS_FQDN not set. Service Bus consumer is disabled.")
         return
@@ -28,23 +48,21 @@ async def consume_service_bus():
         credential = DefaultAzureCredential()
         client = ServiceBusClient(sb_fqdn, credential=credential)
         receiver = client.get_queue_receiver(queue_name=sb_queue)
-        
+
         logger.info(f"Started listening to Service Bus queue: {sb_queue}")
-        
+
         async with client:
             async with receiver:
                 while True:
                     messages = await receiver.receive_messages(max_message_count=10, max_wait_time=5)
                     for msg in messages:
                         try:
-                            # body can be an iterator of bytes or a string depending on payload
                             raw_body = b"".join(msg.body).decode("utf-8") if not isinstance(msg.body, str) else str(msg.body)
                             payload = json.loads(raw_body)
-                            
+
                             msg_type = payload.get("type")
                             if msg_type == "otp":
                                 logger.info(f"Processing OTP request for {payload.get('email')}")
-                                # Run synchronous SMTP call in a thread to prevent blocking the event loop
                                 success = await asyncio.to_thread(
                                     send_otp_email,
                                     payload.get("email"),
@@ -53,10 +71,12 @@ async def consume_service_bus():
                                 )
                                 if success:
                                     await receiver.complete_message(msg)
-                                    logger.info(f"Successfully processed OTP for {payload.get('email')}")
                                 else:
                                     await receiver.abandon_message(msg)
-                                    logger.error(f"Failed to send OTP email for {payload.get('email')}. Abandoning message for retry.")
+                            elif msg_type == "alert":
+                                res = await dispatch_alert_event(payload)
+                                logger.info(f"Dispatched alert via ServiceBus: {res}")
+                                await receiver.complete_message(msg)
                             else:
                                 logger.warning(f"Unknown message type: {msg_type}. Completing to ignore.")
                                 await receiver.complete_message(msg)
@@ -65,6 +85,16 @@ async def consume_service_bus():
                             await receiver.abandon_message(msg)
     except Exception as e:
         logger.error(f"Service Bus consumer crashed: {e}")
+
+
+@app.post("/api/v1/alerts/dispatch")
+async def dispatch_alert(event: AlertEventPayload):
+    """
+    HTTP Dispatcher Endpoint for backend generated operational alerts.
+    """
+    result = await dispatch_alert_event(event.dict())
+    return result
+
 
 @app.get("/health")
 def health_check():

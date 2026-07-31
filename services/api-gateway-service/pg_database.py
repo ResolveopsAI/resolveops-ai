@@ -116,6 +116,52 @@ class PredictiveRisk(Base):
     analysis = Column(Text)
     recommendation = Column(Text)
 
+class AuditLog(Base):
+    __tablename__ = 'audit_logs'
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, index=True)
+    actor_user_id = Column(String(255), nullable=True, index=True)
+    actor_email = Column(String(255), nullable=True, index=True)
+    actor_role = Column(String(50), nullable=True)
+    action = Column(String(255), nullable=False, index=True)
+    target_type = Column(String(100), nullable=True)
+    target_name = Column(String(255), nullable=True, index=True)
+    request_id = Column(String(255), nullable=True)
+    correlation_id = Column(String(255), nullable=True)
+    approval_id = Column(String(255), nullable=True)
+    status = Column(String(50), default="success", index=True)
+    reason = Column(Text, nullable=True)
+    sanitized_parameters = Column(JSON, default=dict)
+    previous_state = Column(JSON, default=dict)
+    resulting_state = Column(JSON, default=dict)
+    source_ip = Column(String(100), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    error_code = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    event_hash = Column(String(255), nullable=True)
+    previous_event_hash = Column(String(255), nullable=True)
+
+class ContainerAction(Base):
+    __tablename__ = 'container_actions'
+    action_id = Column(String(255), primary_key=True)
+    service_name = Column(String(255), nullable=False, index=True)
+    reason = Column(Text, nullable=False)
+    requested_by = Column(String(255), nullable=False, index=True)
+    requested_at = Column(String(100), nullable=False)
+    status = Column(String(50), nullable=False, default="awaiting_approval", index=True)
+    approved_by = Column(String(255), nullable=True)
+    approved_at = Column(String(100), nullable=True)
+    rejected_by = Column(String(255), nullable=True)
+    rejected_at = Column(String(100), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    expires_at = Column(String(100), nullable=True)
+    execution_started_at = Column(String(100), nullable=True)
+    execution_completed_at = Column(String(100), nullable=True)
+    before_state = Column(JSON, default=dict)
+    after_state = Column(JSON, default=dict)
+    verification_status = Column(String(50), nullable=True)
+    error_message = Column(Text, nullable=True)
+
 engine = None
 SessionLocal = None
 

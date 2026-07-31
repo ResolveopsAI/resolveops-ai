@@ -1,0 +1,3 @@
+"""
+Notification channel adapters package.
+"""

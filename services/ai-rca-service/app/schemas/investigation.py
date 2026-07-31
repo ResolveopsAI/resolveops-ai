@@ -46,6 +46,15 @@ class ToolCall(BaseModel):
     error_code: Optional[str] = None
 
 
+class SuggestedFixProposal(BaseModel):
+    action_type: str = "restart_service"  # "restart_service" | "config_change" | "code_change"
+    target: str                           # service name
+    reason: str                           # rationale
+    evidence_ids: List[str] = []
+    risk: str = "medium"                  # "low" | "medium" | "high"
+    requires_approval: bool = True
+
+
 class RCAResponse(BaseModel):
     request_id: str
     investigation_id: str
@@ -58,6 +67,7 @@ class RCAResponse(BaseModel):
     confidence: Optional[str] = None      # "high" | "medium" | "low"
     impact: Optional[str] = None
     recommended_resolution: Optional[str] = None
+    suggested_fix: Optional[SuggestedFixProposal] = None
     insufficient_evidence_warning: Optional[str] = None
 
     live_evidence: List[EvidenceItem] = []

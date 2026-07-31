@@ -600,3 +600,86 @@ def dispatch_workflow(owner: str, repo: str, workflow_id: str, req: DispatchRequ
     except Exception as e:
         logger.error(f"Workflow dispatch error: {e}")
         raise HTTPException(status_code=500, detail=f"Workflow dispatch failed: {str(e)}")
+
+
+class DraftPRRequest(BaseModel):
+    owner: str
+    repo: str
+    base_branch: str = "main"
+    feature_branch: str
+    title: str
+    body: str
+    file_path: str
+    file_content: str
+    commit_message: str
+
+
+@app.post("/api/v1/github/propose-draft-pr")
+def create_draft_pr_proposal(req: DraftPRRequest, x_github_token: Optional[str] = Header(None)):
+    """
+    Creates a new feature branch and opens a DRAFT pull request with proposed code changes.
+    Does NOT merge automatically or touch default branch directly.
+    """
+    if not x_github_token:
+        raise HTTPException(status_code=401, detail="GitHub PAT token missing.")
+
+    headers = get_github_headers(x_github_token)
+
+    try:
+        # 1. Get base branch SHA
+        ref_url = f"https://api.github.com/repos/{req.owner}/{req.repo}/git/ref/heads/{req.base_branch}"
+        ref_res = requests.get(ref_url, headers=headers, timeout=10)
+        if ref_res.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Could not resolve base branch '{req.base_branch}': {ref_res.text}")
+        base_sha = ref_res.json()["object"]["sha"]
+
+        # 2. Create new branch ref
+        new_ref_url = f"https://api.github.com/repos/{req.owner}/{req.repo}/git/refs"
+        branch_payload = {
+            "ref": f"refs/heads/{req.feature_branch}",
+            "sha": base_sha
+        }
+        branch_res = requests.post(new_ref_url, json=branch_payload, headers=headers, timeout=10)
+        if branch_res.status_code not in (201, 422):  # 422 if branch already exists
+            raise HTTPException(status_code=400, detail=f"Failed to create branch '{req.feature_branch}': {branch_res.text}")
+
+        # 3. Create/Update file on feature branch
+        import base64
+        file_url = f"https://api.github.com/repos/{req.owner}/{req.repo}/contents/{req.file_path}"
+        file_payload = {
+            "message": req.commit_message,
+            "content": base64.b64encode(req.file_content.encode("utf-8")).decode("utf-8"),
+            "branch": req.feature_branch,
+        }
+        file_res = requests.put(file_url, json=file_payload, headers=headers, timeout=10)
+        if file_res.status_code not in (200, 201):
+            raise HTTPException(status_code=400, detail=f"Failed to commit file change: {file_res.text}")
+
+        # 4. Create Draft Pull Request
+        pr_url = f"https://api.github.com/repos/{req.owner}/{req.repo}/pulls"
+        pr_payload = {
+            "title": req.title,
+            "body": req.body,
+            "head": req.feature_branch,
+            "base": req.base_branch,
+            "draft": True
+        }
+        pr_res = requests.post(pr_url, json=pr_payload, headers=headers, timeout=10)
+        if pr_res.status_code != 201:
+            raise HTTPException(status_code=400, detail=f"Failed to create draft PR: {pr_res.text}")
+
+        pr_data = pr_res.json()
+        return {
+            "status": "draft_pr_created",
+            "pr_number": pr_data.get("number"),
+            "pr_url": pr_data.get("html_url"),
+            "draft": pr_data.get("draft", True),
+            "branch": req.feature_branch
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error proposing draft PR: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create draft PR: {str(e)}")
+
