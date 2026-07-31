@@ -12,7 +12,7 @@ export default function AwsResourceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const resourceId = decodeURIComponent(params.id);
-  
+
   const [resource, setResource] = useState(null);
   const [cost, setCost] = useState(null);
   const [risks, setRisks] = useState([]);
@@ -39,7 +39,7 @@ export default function AwsResourceDetailPage() {
     try {
       const resData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}`).catch(() => null);
       if (resData) setResource(resData);
-      
+
       const costData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/cost`).catch((e) => ({
         status: "error", message: e?.status === 404 ? "AWS detail endpoint not found. Check backend route mapping." : "Failed to load cost data."
       }));
@@ -56,9 +56,9 @@ export default function AwsResourceDetailPage() {
       }));
       setLogs(Array.isArray(logsData?.logs) ? logsData.logs : []);
       setLogsStatus({
-          available: logsData?.logs_available || false,
-          message: logsData?.message || (logsData?.status === "error" ? logsData.message : ""),
-          warnings: Array.isArray(logsData?.warnings) ? logsData.warnings : []
+        available: logsData?.logs_available || false,
+        message: logsData?.message || (logsData?.status === "error" ? logsData.message : ""),
+        warnings: Array.isArray(logsData?.warnings) ? logsData.warnings : []
       });
 
       const metricsData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/metrics`).catch((e) => ({
@@ -67,10 +67,10 @@ export default function AwsResourceDetailPage() {
       const metricsList = Array.isArray(metricsData)
         ? metricsData
         : Array.isArray(metricsData?.metrics)
-        ? metricsData.metrics
-        : Array.isArray(metricsData?.data)
-        ? metricsData.data
-        : [];
+          ? metricsData.metrics
+          : Array.isArray(metricsData?.data)
+            ? metricsData.data
+            : [];
       setMetrics(metricsList);
 
       const eventsData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/events`).catch((e) => ({
@@ -89,10 +89,10 @@ export default function AwsResourceDetailPage() {
       setSubresources(subData && typeof subData === "object" ? subData : { subresources: {} });
 
       if (resData?.resource_type?.includes("EC2")) {
-          const runData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/runtime`).catch((e) => ({
-            status: "error", message: e?.status === 404 ? "AWS detail endpoint not found. Check backend route mapping." : "Failed to load runtime."
-          }));
-          setRuntime(runData && typeof runData === "object" ? runData : { status: "unavailable", message: "Runtime unavailable" });
+        const runData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/runtime`).catch((e) => ({
+          status: "error", message: e?.status === 404 ? "AWS detail endpoint not found. Check backend route mapping." : "Failed to load runtime."
+        }));
+        setRuntime(runData && typeof runData === "object" ? runData : { status: "unavailable", message: "Runtime unavailable" });
       }
 
 
@@ -115,10 +115,10 @@ export default function AwsResourceDetailPage() {
     if (!resource) return "#";
     const region = resource.region || "us-east-1";
     if (resource.resource_type?.includes("EC2")) {
-        return `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#InstanceDetails:instanceId=${resource.id}`;
+      return `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#InstanceDetails:instanceId=${resource.id}`;
     }
     if (resource.resource_type?.includes("SecurityGroup")) {
-        return `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#SecurityGroup:groupId=${resource.id}`;
+      return `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#SecurityGroup:groupId=${resource.id}`;
     }
     return `https://console.aws.amazon.com/`;
   };
@@ -129,18 +129,18 @@ export default function AwsResourceDetailPage() {
     try {
       const payload = { resource, cost, risks, metrics, logs, runtime, relationships };
       const res = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}/rca`, {
-         method: "POST",
-         body: JSON.stringify(payload)
+        method: "POST",
+        body: JSON.stringify(payload)
       });
       setRcaData(res.rca);
-    } catch(err) {
+    } catch (err) {
       setRcaData({
-         summary: "Error generating RCA.",
-         probable_root_cause: err.message,
-         evidence: [],
-         recommended_fix: "Try again later.",
-         confidence: "Low",
-         data_sources_used: []
+        summary: "Error generating RCA.",
+        probable_root_cause: err.message,
+        evidence: [],
+        recommended_fix: "Try again later.",
+        confidence: "Low",
+        data_sources_used: []
       });
     } finally {
       setRcaLoading(false);
@@ -180,7 +180,7 @@ export default function AwsResourceDetailPage() {
           <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-200 flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> Back to Inventory
           </button>
-          
+
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyArn}
@@ -203,10 +203,10 @@ export default function AwsResourceDetailPage() {
               disabled={refreshing}
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 transition-colors border border-slate-700 disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} /> 
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">{refreshing ? "Syncing..." : "Refresh"}</span>
             </button>
-            <button 
+            <button
               onClick={generateRca}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors ml-2"
             >
@@ -220,23 +220,22 @@ export default function AwsResourceDetailPage() {
           <div className="flex items-center gap-4">
             <div className="p-4 bg-sky-500/10 rounded-2xl border border-sky-500/20 text-sky-400 shrink-0">
               {resource.resource_type?.includes("EC2") ? <Server className="w-8 h-8 text-sky-400" /> :
-               resource.resource_type?.includes("RDS") ? <Database className="w-8 h-8 text-purple-400" /> :
-               resource.resource_type?.includes("EKS") ? <Layers className="w-8 h-8 text-indigo-400" /> :
-               <Activity className="w-8 h-8 text-amber-400" />}
+                resource.resource_type?.includes("RDS") ? <Database className="w-8 h-8 text-purple-400" /> :
+                  resource.resource_type?.includes("EKS") ? <Layers className="w-8 h-8 text-indigo-400" /> :
+                    <Activity className="w-8 h-8 text-amber-400" />}
             </div>
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-white tracking-tight">{resource.resource_name || resource.id}</h1>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                  resource.status === 'running' || resource.status === 'available' || resource.status === 'active'
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' 
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${resource.status === 'running' || resource.status === 'available' || resource.status === 'active'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                     : 'bg-slate-800 text-slate-400 border-slate-700'
-                }`}>
+                  }`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1.5 animate-pulse" />
                   {resource.status || "running"}
                 </span>
               </div>
-              
+
               <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 font-mono">
                 <span className="text-sky-400 font-semibold">{resource.resource_type}</span>
                 <span>•</span>
@@ -257,7 +256,7 @@ export default function AwsResourceDetailPage() {
           {/* Left Column: Risks & Logs */}
           <div className="lg:col-span-2 space-y-8">
             <ResourceRiskSummaryCards risks={risks} />
-            
+
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
               <h3 className="text-base font-bold text-white mb-4">Risk Analysis</h3>
               <ResourceRiskList risks={risks} />
@@ -265,7 +264,7 @@ export default function AwsResourceDetailPage() {
 
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                 <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
+                <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
               </h3>
               <AwsResourceLogsAndEvents logs={logs} logsStatus={logsStatus} metrics={metrics} events={events} resource={resource} />
             </div>
@@ -299,12 +298,12 @@ export default function AwsResourceDetailPage() {
                   {/* Exact On-Demand Catalog Rate */}
                   <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 space-y-3">
                     <div className="flex items-center justify-between">
-                       <p className="text-xs text-slate-400 font-mono">On-Demand Catalog Rate</p>
-                       <span className="px-2 py-0.5 bg-sky-500/15 text-sky-400 border border-sky-500/30 rounded-md text-[9px] uppercase font-bold tracking-wider">
-                         {cost.estimated_running_price?.confidence || "Exact Rate"}
-                       </span>
+                      <p className="text-xs text-slate-400 font-mono">On-Demand Catalog Rate</p>
+                      <span className="px-2 py-0.5 bg-sky-500/15 text-sky-400 border border-sky-500/30 rounded-md text-[9px] uppercase font-bold tracking-wider">
+                        {cost.estimated_running_price?.confidence || "Exact Rate"}
+                      </span>
                     </div>
-                    
+
                     <div>
                       <p className="text-2xl font-black font-mono text-white">
                         ${cost.estimated_running_price?.monthly || 135.49} <span className="text-xs text-slate-400 font-normal">/ mo</span>
@@ -352,7 +351,7 @@ export default function AwsResourceDetailPage() {
               )}
               <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
             </div>
-            
+
             {/* Sub-Resources */}
             {subresources && (
               <AwsSubResources subresources={subresources} resource={resource} />
@@ -363,7 +362,7 @@ export default function AwsResourceDetailPage() {
           </div>
         </div>
       </div>
-      
+
       {/* RCA Modal */}
       {rcaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -405,7 +404,7 @@ export default function AwsResourceDetailPage() {
                       <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Data Sources</h3>
                       <div className="flex flex-wrap gap-2">
                         {rcaData.data_sources_used?.map((ds, i) => (
-                           <span key={i} className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs">{ds}</span>
+                          <span key={i} className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-xs">{ds}</span>
                         ))}
                       </div>
                     </div>
@@ -453,11 +452,10 @@ function AwsResourceMetadataGrid({ resource }) {
   const renderField = (label, value, subtext = null, highlight = false) => {
     if (value === undefined || value === null || value === "") return null;
     return (
-      <div className={`p-4 rounded-xl border transition-all ${
-        highlight 
-          ? 'bg-sky-500/10 border-sky-500/30' 
+      <div className={`p-4 rounded-xl border transition-all ${highlight
+          ? 'bg-sky-500/10 border-sky-500/30'
           : 'bg-[#0a0f1d] border-white/10 hover:border-white/20'
-      }`}>
+        }`}>
         <p className="text-[11px] text-slate-400 font-mono uppercase tracking-wider mb-1">{label}</p>
         <p className="text-sm font-semibold font-mono text-white break-all">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
         {subtext && <p className="text-[10px] text-slate-500 font-mono mt-1">{subtext}</p>}
@@ -593,7 +591,7 @@ function AwsResourceLogsAndEvents({ logs, logsStatus, metrics, events, resource 
 
 function AwsSubResources({ subresources, resource }) {
   if (!subresources) return null;
-  
+
   const subData = subresources.subresources || {};
   const hasItems = Object.keys(subData).some(k => subData[k] && subData[k].length > 0);
 
@@ -647,7 +645,7 @@ function AwsSubResources({ subresources, resource }) {
 
 function AwsRuntime({ runtime, resource }) {
   const resName = (resource?.resource_name || resource?.id || "ec2-instance").toLowerCase().replace(/[^a-z0-9]/g, "-");
-  
+
   // User application container workloads executing on this specific cloud instance
   const containers = [
     {
@@ -733,9 +731,9 @@ function AwsRuntime({ runtime, resource }) {
                   <span className="text-sky-400 font-bold">{c.cpu_pct}%</span>
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-sky-500 to-indigo-500 h-1.5 rounded-full transition-all" 
-                    style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }} 
+                  <div
+                    className="bg-gradient-to-r from-sky-500 to-indigo-500 h-1.5 rounded-full transition-all"
+                    style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }}
                   />
                 </div>
               </div>
@@ -747,9 +745,9 @@ function AwsRuntime({ runtime, resource }) {
                   <span className="text-purple-400 font-bold">{c.mem_mb} MB / {c.mem_limit} MB</span>
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-purple-500 to-fuchsia-500 h-1.5 rounded-full transition-all" 
-                    style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }} 
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-fuchsia-500 h-1.5 rounded-full transition-all"
+                    style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }}
                   />
                 </div>
               </div>
