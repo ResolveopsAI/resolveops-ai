@@ -3197,6 +3197,11 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
             "cpu_api": random.randint(20, 60),
             "cpu_rca": random.randint(40, 85),
             "cpu_db": random.randint(10, 40),
+            "mem_api": random.randint(128, 512),
+            "mem_rca": random.randint(512, 2048),
+            "mem_db": random.randint(256, 1024)
+        })
+
     # 6. Fetch User AWS Discovered Resources
     user_resources = []
     if aws_connected:
