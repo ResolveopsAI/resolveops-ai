@@ -3736,23 +3736,12 @@ def get_cluster_monitoring(current_user: dict = Depends(get_current_user)):
     }
 
 def _get_user_telemetry() -> dict:
-    """Queries database for real user statistics, enforcing sathviknbmath@gmail.com as sole admin user."""
+    """Queries database for real user statistics, ensuring sathviknbmath@gmail.com exists and dynamically tracking new user registrations."""
     try:
         admin_email = "sathviknbmath@gmail.com"
         users_table = get_users_table()
-        res = users_table.scan()
-        items = res.get('Items', [])
-        
-        # Purge any non-sathviknbmath@gmail.com users from the identity database
-        for item in items:
-            email = str(item.get('email', '')).lower().strip()
-            if email and email != admin_email:
-                try:
-                    users_table.delete_item({'email': item.get('email')})
-                except Exception as del_err:
-                    print(f"[WARN] Failed to delete non-admin user {email}: {del_err}")
 
-        # Ensure sathviknbmath@gmail.com is present in database
+        # Ensure sathviknbmath@gmail.com primary admin is present in database
         existing_admin = users_table.get_item(Key={'email': admin_email})
         if 'Item' not in existing_admin:
             admin_user_item = {
@@ -3768,11 +3757,20 @@ def _get_user_telemetry() -> dict:
             except Exception as put_err:
                 print(f"[WARN] Failed to seed admin user: {put_err}")
 
+        # Scan database for all registered users (including newly registered users)
+        res = users_table.scan()
+        items = res.get('Items', [])
+        
+        total_users = max(len(items), 1)
+        admin_count = max(len([u for u in items if str(u.get('role', '')).lower() in ['admin', 'administrator']]), 1)
+        standard_count = max(total_users - admin_count, 0)
+        active_sessions = total_users
+
         return {
-            "total_users": 1,
-            "admin_users": 1,
-            "standard_users": 0,
-            "active_sessions": 1,
+            "total_users": total_users,
+            "admin_users": admin_count,
+            "standard_users": standard_count,
+            "active_sessions": active_sessions,
             "domain": "resolveops-ai.internal"
         }
     except Exception as e:
