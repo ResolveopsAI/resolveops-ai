@@ -254,8 +254,8 @@ export default function AwsResourceDetailPage() {
         <AwsResourceMetadataGrid resource={resource} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column: Risks & Logs */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Intelligence UI Components */}
             <ResourceRiskSummaryCards risks={risks} />
             
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
@@ -271,6 +271,7 @@ export default function AwsResourceDetailPage() {
             </div>
           </div>
 
+          {/* Right Column: Cost, Relationships, Sub-Resources */}
           <div className="space-y-8">
             {/* Cost Intelligence */}
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl">
@@ -331,27 +332,25 @@ export default function AwsResourceDetailPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
             {/* Relationship Context */}
-            <div className="glass-panel p-6 rounded-xl border border-slate-700/50">
-              <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-400" /> Relationship Context
+            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-sky-400" /> Relationship Context
               </h3>
               {relationships && relationships.length > 0 ? (
                 <div className="space-y-3">
                   {relationships.map((rel, i) => (
-                    <div key={i} className="p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{rel.type}</span>
-                      <div className="text-sm font-mono text-slate-300 mt-1 truncate" title={rel.id}>{rel.id}</div>
+                    <div key={i} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{rel.type}</span>
+                      <div className="text-xs font-mono text-slate-200 mt-1 truncate" title={rel.id}>{rel.id}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-slate-400 italic">No direct relationships found.</div>
+                <div className="text-xs text-slate-400 font-mono italic">No direct relationships found.</div>
               )}
-              <p className="text-xs text-slate-500 mt-4 italic border-t border-slate-700/50 pt-4">More relationships available in Architecture Diagram.</p>
+              <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
             </div>
             
             {/* Sub-Resources */}
