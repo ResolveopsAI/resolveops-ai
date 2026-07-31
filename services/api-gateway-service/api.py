@@ -123,6 +123,8 @@ class ApiKeyResponse(BaseModel):
 @app.post("/api/request-otp", status_code=202)
 def request_otp(req: OTPRequest):
     """Generate and queue a 6-digit OTP for email verification via Service Bus."""
+    req_email = req.email.strip().lower()
+
     # Strict Admin Invite Code verification if registering as Admin
     req_role = (getattr(req, "role", None) or "user").lower()
     if req_role in ["admin", "administrator"]:
@@ -133,13 +135,13 @@ def request_otp(req: OTPRequest):
 
     # Check if email already registered
     users_table = get_users_table()
-    existing = users_table.get_item(Key={'email': req.email})
+    existing = users_table.get_item(Key={'email': req_email})
     if 'Item' in existing and existing['Item'].get('hashed_password'):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     otp_code = str(random.randint(100000, 999999))
     expires_at = time.time() + 120
-    otp_store[req.email] = {
+    otp_store[req_email] = {
         "otp": otp_code,
         "full_name": req.full_name,
         "role": getattr(req, "role", "user"),
@@ -148,41 +150,53 @@ def request_otp(req: OTPRequest):
     }
 
     if os.getenv("DEBUG_LOG_OTP", "false").lower() == "true":
-        print(f"[DEV-ONLY] Generated OTP for {req.email}: {otp_code}")
+        print(f"[DEV-ONLY] Generated OTP for {req_email}: {otp_code}")
 
     try:
-        notifications.send_otp_email(req.email, req.full_name, otp_code)
-        return {"message": f"OTP requested for {req.email}. Please check your inbox."}
+        sent = notifications.send_otp_email(req_email, req.full_name, otp_code)
+        if not sent:
+            if req_email in otp_store:
+                del otp_store[req_email]
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send OTP email: SMTP authentication failed (535 Bad Credentials). Please verify SMTP_USER and SMTP_PASSWORD (a 16-character Gmail App Password is required)."
+            )
+        return {"message": f"OTP requested for {req_email}. Please check your inbox."}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Failed to send direct SMTP email: {e}")
-        del otp_store[req.email]
+        if req_email in otp_store:
+            del otp_store[req_email]
         raise HTTPException(status_code=500, detail=f"Failed to send OTP email: {str(e)}")
 
-# --- Auth Endpoints (DynamoDB) ---
+# --- Auth Endpoints (DynamoDB / PostgreSQL) ---
 @app.post("/api/register")
 def register_user(user: UserAuth):
     try:
+        user_email = user.email.strip().lower()
+
         # Validate OTP first
         if not user.otp_code:
             raise HTTPException(status_code=400, detail="OTP code is required")
 
-        stored = otp_store.get(user.email)
+        stored = otp_store.get(user_email)
         if not stored:
             raise HTTPException(status_code=400, detail="No OTP found for this email. Please request one first.")
         if time.time() > stored["expires"]:
-            del otp_store[user.email]
+            del otp_store[user_email]
             raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
         if stored["otp"] != user.otp_code:
             raise HTTPException(status_code=400, detail="Invalid OTP code.")
 
         full_name = user.full_name or stored.get("full_name", "")
         # Clear OTP after successful validation
-        del otp_store[user.email]
+        del otp_store[user_email]
 
         users_table = get_users_table()
         
         # Check if user exists but preserve integrations if they are re-registering after auth cleanup
-        response = users_table.get_item(Key={'email': user.email})
+        response = users_table.get_item(Key={'email': user_email})
         existing_item = response.get('Item')
         
         if existing_item and existing_item.get('hashed_password'):
@@ -201,7 +215,7 @@ def register_user(user: UserAuth):
 
         # Save user with full_name, role, and preserve integrations
         item_to_put = {
-            'email': user.email,
+            'email': user_email,
             'user_id': user_id,
             'tenant_id': user_id,
             'full_name': full_name,
@@ -234,17 +248,18 @@ def register_user(user: UserAuth):
 @app.post("/api/login")
 def login_user(user: UserAuth):
     try:
+        user_email = user.email.strip().lower()
         users_table = get_users_table()
-        response = users_table.get_item(Key={'email': user.email})
+        response = users_table.get_item(Key={'email': user_email})
         
         if 'Item' not in response:
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Account not found for this email. Please register first.")
             
         db_user = response['Item']
         hashed_password = db_user.get('hashed_password')
         
         if not hashed_password or not verify_password(user.password, hashed_password):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
         
         token = jwt.encode({
             "user_id": db_user['user_id'],
