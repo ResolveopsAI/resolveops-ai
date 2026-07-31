@@ -740,7 +740,7 @@ export default function MonitoringPage() {
                   <h3 className="text-sm font-bold text-white tracking-tight">Active User & Platform Session Telemetry</h3>
                   <span className="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                    Domain: {user_telemetry.domain || "resolveops-ai.internal"}
+                    Domain: {user_telemetry?.domain || "resolveops-ai.internal"}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 font-mono mt-0.5">
@@ -751,7 +751,7 @@ export default function MonitoringPage() {
 
             <div className="flex items-center gap-2 bg-sky-950/40 border border-sky-500/20 px-3 py-1.5 rounded-xl text-xs font-mono text-sky-300">
               <UserCheck size={14} className="text-sky-400" />
-              <span>Active Sessions: <strong>{user_telemetry.active_sessions || 1} online</strong></span>
+              <span>Active Sessions: <strong>{user_telemetry?.active_sessions ?? 0} online</strong></span>
             </div>
           </div>
 
@@ -763,7 +763,7 @@ export default function MonitoringPage() {
                 <Users size={15} className="text-sky-400" />
               </div>
               <p className="text-2xl font-black font-mono text-white tracking-tight">
-                {user_telemetry.total_users || 1}
+                {user_telemetry?.total_users ?? 0}
               </p>
               <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
                 <span>Database Identity Store</span>
@@ -778,7 +778,7 @@ export default function MonitoringPage() {
                 <UserCheck size={15} className="text-emerald-400" />
               </div>
               <p className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
-                {user_telemetry.active_sessions || 1}
+                {user_telemetry?.active_sessions ?? 0}
               </p>
               <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
                 <span>Current Real-time Load</span>
@@ -793,7 +793,7 @@ export default function MonitoringPage() {
                 <ShieldCheck size={15} className="text-amber-400" />
               </div>
               <p className="text-2xl font-black font-mono text-amber-400 tracking-tight">
-                {user_telemetry.admin_users || 1}
+                {user_telemetry?.admin_users ?? 0}
               </p>
               <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
                 <span>RBAC Privilege Level</span>
@@ -808,7 +808,7 @@ export default function MonitoringPage() {
                 <Globe size={15} className="text-indigo-400" />
               </div>
               <p className="text-2xl font-black font-mono text-indigo-400 tracking-tight">
-                {user_telemetry.standard_users ?? 0}
+                {user_telemetry?.standard_users ?? 0}
               </p>
               <div className="mt-2 text-[10px] text-slate-500 font-mono flex justify-between">
                 <span>Domain Tenant</span>
