@@ -149,23 +149,31 @@ def request_otp(req: OTPRequest):
         "expires": expires_at  # 2-minute TTL
     }
 
-    if os.getenv("DEBUG_LOG_OTP", "false").lower() == "true":
+    debug_mode = os.getenv("DEBUG_LOG_OTP", "false").lower() == "true"
+    if debug_mode:
         print(f"[DEV-ONLY] Generated OTP for {req_email}: {otp_code}")
 
     try:
         sent = notifications.send_otp_email(req_email, req.full_name, otp_code)
         if not sent:
-            if req_email in otp_store:
-                del otp_store[req_email]
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to send OTP email: SMTP authentication failed (535 Bad Credentials). Please verify SMTP_USER and SMTP_PASSWORD (a 16-character Gmail App Password is required)."
-            )
+            if debug_mode:
+                print(f"[DEV-FALLBACK] SMTP send failed, but DEBUG_LOG_OTP=true. Retaining OTP for log registration: {otp_code}")
+                return {"message": f"OTP requested for {req_email}. (Dev Mode: Use OTP from docker logs)"}
+            else:
+                if req_email in otp_store:
+                    del otp_store[req_email]
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to send OTP email: SMTP authentication failed (535 Bad Credentials). Please verify SMTP_USER and SMTP_PASSWORD."
+                )
         return {"message": f"OTP requested for {req_email}. Please check your inbox."}
     except HTTPException:
         raise
     except Exception as e:
         print(f"Failed to send direct SMTP email: {e}")
+        if debug_mode:
+            print(f"[DEV-FALLBACK] Exception during SMTP send, but DEBUG_LOG_OTP=true. Retaining OTP for log registration: {otp_code}")
+            return {"message": f"OTP requested for {req_email}. (Dev Mode: Use OTP from docker logs)"}
         if req_email in otp_store:
             del otp_store[req_email]
         raise HTTPException(status_code=500, detail=f"Failed to send OTP email: {str(e)}")
