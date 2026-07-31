@@ -83,8 +83,10 @@ export default function AnalyticsPage() {
     );
   }
 
+  const { summary = {}, services = [], user_resources = [], time_series = {}, generated_at } = analytics || {};
+
   // Compute real dynamic telemetry from discovered user_resources for connected providers
-  const awsResources = user_resources.filter(r => (r.provider === "aws" || r.resource_type?.includes("AWS::")));
+  const awsResources = (user_resources || []).filter(r => (r.provider === "aws" || r.resource_type?.includes("AWS::")));
   const ec2Instances = awsResources.filter(r => r.resource_type?.includes("EC2::Instance"));
   const runningEc2 = ec2Instances.filter(r => (r.status || "").toLowerCase() === "running" || (r.status || "").toLowerCase() === "available").length;
   const vpcCount = awsResources.filter(r => r.resource_type?.includes("VPC")).length || 1;

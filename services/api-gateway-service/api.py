@@ -1560,7 +1560,7 @@ def get_integrations(current_user: dict = Depends(get_current_user)):
     """Retrieves external integration statuses for this tenant workspace."""
     try:
         tenant_email = current_user.get("email")
-        integrations = get_user_integrations(tenant_email)
+        integrations = get_user_integrations(tenant_email) or {}
         
         status_map = {
             "github": False, "aws": False, "azure": False,
