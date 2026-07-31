@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Cloud, GitBranch, LayoutDashboard, MessageSquareCode, Lightbulb,
   BarChart3, Settings, LogOut, Server, PanelLeftClose, PanelLeftOpen,
-  Shield, Activity, Zap, MonitorDot
+  Shield, Activity, Zap, MonitorDot, User, Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -87,56 +87,93 @@ export default function SidebarNavigation() {
 
   return (
     <aside
-      className={`relative flex flex-col z-20 my-3 ml-3 mr-0 rounded-2xl shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
-        isCollapsed ? "w-[68px]" : "w-[220px]"
+      className={`sticky top-3 h-[calc(100vh-24px)] z-20 my-3 ml-3 mr-0 rounded-2xl shrink-0 flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${
+        isCollapsed ? "w-[68px]" : "w-[230px]"
       }`}
       style={{
         background: "linear-gradient(180deg, #0d1424 0%, #080d1a 100%)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        boxShadow: "1px 0 0 rgba(255,255,255,0.03) inset, 0 4px 30px rgba(0,0,0,0.4)"
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "1px 0 0 rgba(255,255,255,0.03) inset, 0 4px 30px rgba(0,0,0,0.5)"
       }}
     >
       {/* Top glow strip */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/40 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/50 to-transparent pointer-events-none" />
 
       {/* Logo header */}
-      <div className={`flex items-center gap-3 p-4 ${isCollapsed ? "justify-center" : ""}`}>
+      <div className={`flex items-center gap-3 p-4 shrink-0 ${isCollapsed ? "justify-center" : ""}`}>
         <div className="shrink-0">{LOGO}</div>
         {!isCollapsed && (
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="font-bold text-[13px] tracking-tight leading-none text-white">ResolveOps AI</h1>
-            <p className="text-[9px] text-sky-400/70 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
+            <p className="text-[9px] text-sky-400/80 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
           </div>
         )}
         {!isCollapsed && (
           <button
             onClick={toggleCollapse}
-            className="ml-auto p-1 text-slate-600 hover:text-slate-300 rounded-md hover:bg-white/5 transition-colors"
-            title="Collapse"
+            className="p-1.5 text-slate-500 hover:text-slate-200 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            title="Collapse Sidebar"
           >
-            <PanelLeftClose size={14} />
+            <PanelLeftClose size={15} />
           </button>
         )}
       </div>
 
       {/* Collapse button when collapsed */}
       {isCollapsed && (
-        <div className="px-2.5 mb-1 flex justify-center">
+        <div className="px-2.5 mb-2 flex justify-center shrink-0">
           <button
             onClick={toggleCollapse}
-            className="w-full flex justify-center items-center py-1.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-sky-400 rounded-lg border border-white/5 transition-colors"
-            title="Expand"
+            className="w-full flex justify-center items-center py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-sky-400 rounded-lg border border-white/5 transition-colors cursor-pointer"
+            title="Expand Sidebar"
           >
-            <PanelLeftOpen size={14} />
+            <PanelLeftOpen size={15} />
           </button>
         </div>
       )}
 
+      {/* Top User Profile Card & Quick Logout (ALWAYS VISIBLE AT TOP) */}
+      <div className="px-2.5 mb-2 shrink-0">
+        {!isCollapsed ? (
+          <div className="p-2.5 rounded-xl bg-gradient-to-r from-sky-950/30 to-indigo-950/20 border border-sky-500/20 flex items-center justify-between gap-2 shadow-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center shrink-0">
+                <User size={14} className="text-sky-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-200 truncate capitalize leading-none">
+                  {userRole} Account
+                </p>
+                <span className="inline-flex items-center gap-1 text-[9px] text-emerald-400 font-medium mt-0.5">
+                  <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                  Active Session
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer shrink-0"
+              title="Logout from ResolveOps AI"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="w-full flex justify-center items-center py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-all cursor-pointer"
+            title="Logout"
+          >
+            <LogOut size={16} />
+          </button>
+        )}
+      </div>
+
       {/* Divider */}
-      <div className="mx-4 mb-3 h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+      <div className="mx-4 mb-2 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent shrink-0" />
 
       {/* Nav items */}
-      <nav className="flex-1 px-2.5 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2.5 space-y-1 overflow-y-auto py-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
@@ -144,16 +181,16 @@ export default function SidebarNavigation() {
           return (
             <Link key={item.name} href={item.path} title={isCollapsed ? item.name : undefined}>
               <div
-                className={`w-full flex items-center rounded-xl transition-all duration-150 group
+                className={`w-full flex items-center rounded-xl transition-all duration-150 group cursor-pointer
                   ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
                   ${isActive
                     ? "nav-active"
-                    : "text-slate-500 hover:text-slate-200 hover:bg-white/[0.04] border border-transparent hover:border-white/[0.05]"
+                    : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06]"
                   }`}
               >
                 <Icon
                   size={16}
-                  className={`shrink-0 transition-colors ${isActive ? "text-sky-400" : "text-slate-500 group-hover:text-slate-300"}`}
+                  className={`shrink-0 transition-colors ${isActive ? "text-sky-400" : "text-slate-400 group-hover:text-slate-200"}`}
                 />
                 {!isCollapsed && (
                   <span className="font-medium text-[13px] whitespace-nowrap tracking-tight">
@@ -169,40 +206,41 @@ export default function SidebarNavigation() {
         })}
       </nav>
 
-      {/* Bottom section */}
-      <div className="mt-auto">
-        <div className="mx-4 mb-3 h-px bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+      {/* Bottom section (Sticky at bottom of sidebar) */}
+      <div className="mt-auto shrink-0">
+        <div className="mx-4 mb-2.5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         {/* System status row */}
         {!isCollapsed && (
-          <div className="mx-2.5 mb-2 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+          <div className="mx-2.5 mb-2 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[9px] text-slate-600 uppercase tracking-widest font-bold">System</span>
-              <div className="flex items-center gap-1">
+              <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">System</span>
+              <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[9px] text-emerald-400 font-bold">ONLINE</span>
               </div>
             </div>
-            <p className="font-mono text-[10px] text-slate-500 tracking-wider">{systemTime} UTC+5:30</p>
+            <p className="font-mono text-[10px] text-slate-400 tracking-wider">{systemTime} UTC+5:30</p>
           </div>
         )}
 
-        {/* Logout */}
+        {/* Secondary Bottom Logout Option */}
         <div className="p-2.5">
           <button
             onClick={handleLogout}
             title={isCollapsed ? "Logout" : undefined}
-            className={`w-full flex items-center rounded-xl py-2.5 text-slate-600 hover:text-rose-400 hover:bg-rose-500/[0.07] transition-all duration-150 font-medium text-[13px] border border-transparent hover:border-rose-500/[0.15] cursor-pointer
-              ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"}`}
+            className={`w-full flex items-center rounded-xl py-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-150 font-medium text-[12px] border border-transparent hover:border-rose-500/20 cursor-pointer
+              ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-3"}`}
           >
-            <LogOut size={16} className="shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">Logout</span>}
+            <LogOut size={15} className="shrink-0" />
+            {!isCollapsed && <span className="whitespace-nowrap">Sign Out</span>}
           </button>
         </div>
       </div>
 
       {/* Bottom glow strip */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/30 to-transparent pointer-events-none" />
     </aside>
   );
 }
+
