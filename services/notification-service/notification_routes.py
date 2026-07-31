@@ -31,13 +31,19 @@ def _send_smtp(recipient: str, subject: str, html_body: str) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Nexus AI <{SENDER_EMAIL}>"
+        msg["From"] = f"ResolveOps Support <{SENDER_EMAIL}>"
         msg["To"] = recipient
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        if SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
+        else:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
             server.ehlo()
             server.starttls()
+            server.ehlo()
+
+        with server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SENDER_EMAIL, [recipient], msg.as_string())
 
