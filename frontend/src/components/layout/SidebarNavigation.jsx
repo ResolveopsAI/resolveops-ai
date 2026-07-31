@@ -3,8 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import {
   Cloud, GitBranch, LayoutDashboard, MessageSquareCode, Lightbulb,
-  BarChart3, Settings, LogOut, Server, PanelLeftClose, PanelLeftOpen,
-  Shield, Activity, Zap, MonitorDot, User, Sparkles
+  BarChart3, Settings, Server, PanelLeftClose, PanelLeftOpen,
+  MonitorDot
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -29,7 +29,6 @@ const LOGO = (
 );
 
 export default function SidebarNavigation() {
-  const router = useRouter();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [integrations, setIntegrations] = useState({ github: false, aws: false, azure: false });
@@ -67,11 +66,6 @@ export default function SidebarNavigation() {
   };
 
   useEffect(() => { loadIntegrations(); }, [pathname]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
-    router.push("/login");
-  };
 
   const navItems = [
     ...(userRole === "admin" ? [{ name: "Command Center", path: "/", icon: LayoutDashboard }] : []),
@@ -132,43 +126,6 @@ export default function SidebarNavigation() {
         </div>
       )}
 
-      {/* Top User Profile Card & Quick Logout (ALWAYS VISIBLE AT TOP) */}
-      <div className="px-2.5 mb-2 shrink-0">
-        {!isCollapsed ? (
-          <div className="p-2.5 rounded-xl bg-gradient-to-r from-sky-950/30 to-indigo-950/20 border border-sky-500/20 flex items-center justify-between gap-2 shadow-sm">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center shrink-0">
-                <User size={14} className="text-sky-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-200 truncate capitalize leading-none">
-                  {userRole} Account
-                </p>
-                <span className="inline-flex items-center gap-1 text-[9px] text-emerald-400 font-medium mt-0.5">
-                  <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                  Active Session
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer shrink-0"
-              title="Logout from ResolveOps AI"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleLogout}
-            className="w-full flex justify-center items-center py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-all cursor-pointer"
-            title="Logout"
-          >
-            <LogOut size={16} />
-          </button>
-        )}
-      </div>
-
       {/* Divider */}
       <div className="mx-4 mb-2 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent shrink-0" />
 
@@ -207,12 +164,12 @@ export default function SidebarNavigation() {
       </nav>
 
       {/* Bottom section (Sticky at bottom of sidebar) */}
-      <div className="mt-auto shrink-0">
+      <div className="mt-auto shrink-0 pb-2">
         <div className="mx-4 mb-2.5 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         {/* System status row */}
         {!isCollapsed && (
-          <div className="mx-2.5 mb-2 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+          <div className="mx-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">System</span>
               <div className="flex items-center gap-1.5">
@@ -223,19 +180,6 @@ export default function SidebarNavigation() {
             <p className="font-mono text-[10px] text-slate-400 tracking-wider">{systemTime} UTC+5:30</p>
           </div>
         )}
-
-        {/* Secondary Bottom Logout Option */}
-        <div className="p-2.5">
-          <button
-            onClick={handleLogout}
-            title={isCollapsed ? "Logout" : undefined}
-            className={`w-full flex items-center rounded-xl py-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-150 font-medium text-[12px] border border-transparent hover:border-rose-500/20 cursor-pointer
-              ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-3"}`}
-          >
-            <LogOut size={15} className="shrink-0" />
-            {!isCollapsed && <span className="whitespace-nowrap">Sign Out</span>}
-          </button>
-        </div>
       </div>
 
       {/* Bottom glow strip */}
@@ -243,4 +187,5 @@ export default function SidebarNavigation() {
     </aside>
   );
 }
+
 
