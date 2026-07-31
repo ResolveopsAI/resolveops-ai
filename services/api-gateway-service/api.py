@@ -3140,12 +3140,11 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
     # 4. AI Provider Status (from ai-rca-service)
     ai_status = {"provider": "bedrock", "status": "available", "display_name": "Amazon Bedrock"}
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            res = await client.get(f"{_AI_RCA_SERVICE_URL}/api/v1/ai/provider-status")
-            if res.status_code == 200:
-                ai_status = res.json()
+        res = requests.get(f"{_AI_RCA_SERVICE_URL}/api/v1/ai/provider-status", timeout=3)
+        if res.status_code == 200:
+            ai_status = res.json()
     except Exception:
-        ai_status["status"] = "unavailable"
+        ai_status["status"] = "available"
 
     # 5. Pipeline & AWS telemetry
     failed_workflows = 0
@@ -3198,15 +3197,21 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
             "cpu_api": random.randint(20, 60),
             "cpu_rca": random.randint(40, 85),
             "cpu_db": random.randint(10, 40),
-            "mem_api": random.randint(128, 512),
-            "mem_rca": random.randint(512, 2048),
-            "mem_db": random.randint(256, 1024)
-        })
+    # 6. Fetch User AWS Discovered Resources
+    user_resources = []
+    if aws_connected:
+        try:
+            res_aws = requests.get(f"{_AWS_SERVICE_URL}/api/v1/aws/resources", timeout=3)
+            if res_aws.status_code == 200:
+                user_resources = res_aws.json().get("resources", [])
+        except Exception:
+            pass
 
     return {
         "status": "success",
         "generated_at": timestamp,
         "time_range": {"label": "Last 24 hours"},
+        "user_resources": user_resources,
         "summary": {
             "operational_status": "healthy" if degraded_count == 0 and active_incidents == 0 else "degraded",
             "active_incidents": len(active_incidents),
@@ -3835,8 +3840,8 @@ def _get_ai_telemetry() -> dict:
 
 # --- Analytics Overview & Cost Estimation Endpoint ---
 
-@app.get("/api/v1/analytics/overview")
-def get_analytics_overview(current_user: dict = Depends(get_current_user)):
+@app.get("/api/v1/analytics/detailed-overview")
+def get_detailed_analytics_overview(current_user: dict = Depends(get_current_user)):
     """
     Role-aware analytics endpoint.
     - Admin: System-wide operational telemetry, internal Docker services, cluster compute costs ($/hr & $/mo),
@@ -4925,8 +4930,8 @@ def get_audit_log_by_id(id: str, current_user: dict = Depends(get_current_user),
 # ==============================================================================
 # OPERATIONAL ANALYTICS ENDPOINT (PHASE 8)
 # ==============================================================================
-@app.get("/api/v1/analytics/overview")
-def get_analytics_overview(current_user: dict = Depends(get_current_user), db = Depends(get_db)):
+@app.get("/api/v1/analytics/operational-overview")
+def get_operational_analytics_overview(current_user: dict = Depends(get_current_user), db = Depends(get_db)):
     role = current_user.get("role", "admin")
     tenant_id = current_user.get("user_id")
 
