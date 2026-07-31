@@ -3067,11 +3067,7 @@ async def get_analytics_overview(current_user: dict = Depends(get_current_user))
     """
     tenant_id = current_user.get("user_id")
     tenant_email = current_user.get("email")
-    role = current_user.get("role", "user")
-    
-    if role != "admin":
-        raise HTTPException(status_code=403, detail="Access denied. Only administrators can view global operational telemetry.")
-
+    # Analytics is available to all authenticated users (multi-cloud telemetry dashboard)
     timestamp = datetime.datetime.utcnow().isoformat() + "Z"
 
     # 1. Integrations Status
