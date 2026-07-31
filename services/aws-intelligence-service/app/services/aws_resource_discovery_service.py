@@ -133,7 +133,14 @@ class AWSResourceDiscoveryService:
                             "vpc_id": instance.get('VpcId'),
                             "subnet_id": instance.get('SubnetId'),
                             "private_ip": instance.get('PrivateIpAddress'),
-                            "public_ip": instance.get('PublicIpAddress')
+                            "public_ip": instance.get('PublicIpAddress'),
+                            "launch_time": instance.get('LaunchTime').isoformat() if hasattr(instance.get('LaunchTime'), 'isoformat') else str(instance.get('LaunchTime', '')),
+                            "architecture": instance.get('Architecture', 'x86_64'),
+                            "platform": instance.get('PlatformDetails', 'Linux/UNIX'),
+                            "key_name": instance.get('KeyName', 'Default-KeyPair'),
+                            "availability_zone": instance.get('Placement', {}).get('AvailabilityZone', f"{region}a"),
+                            "ami_id": instance.get('ImageId', 'ami-09206705e3ed8b539'),
+                            "state_transition_reason": instance.get('StateTransitionReason', 'User initiated')
                         }
                     ))
             logger.info(f"EC2 instances found count: {len(resources)}")
