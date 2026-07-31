@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 DASHBOARD_URL = "https://resolveops-ai.sathvikdevops.online"
 
 # ─── SMTP Configuration ──────────────────────────────────────────────────────
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com").strip().strip('"').strip("'")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "").strip()
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "").strip()
+SMTP_USER = os.getenv("SMTP_USER", "").strip().strip('"').strip("'")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "").strip().strip('"').strip("'")
 
 SENDER_EMAIL = (
     os.getenv("EMAIL_FROM") or
@@ -24,7 +24,7 @@ SENDER_EMAIL = (
     os.getenv("RESOLVEOPS_SENDER_EMAIL") or
     os.getenv("NEXUS_SENDER_EMAIL") or
     SMTP_USER
-).strip()
+).strip().strip('"').strip("'")
 
 logger.info("=== SMTP Configuration ===")
 logger.info(f"SMTP Host loaded: {SMTP_HOST}")
@@ -57,6 +57,7 @@ def _send_smtp(recipient: str, subject: str, html_body: str) -> bool:
             # Auto-detect security: Port 465 is typically SSL, 587 is STARTTLS
             if SMTP_PORT == 465:
                 server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
+                server.ehlo()
             else:
                 server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
                 server.ehlo()
