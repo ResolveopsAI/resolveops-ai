@@ -27,6 +27,20 @@ class MockDynamoTable:
         finally:
             db.close()
 
+    def delete_item(self, Key):
+        db = SessionLocal()
+        if not db:
+            return
+        try:
+            instance = db.query(self.model).filter_by(**Key).first()
+            if instance:
+                db.delete(instance)
+                db.commit()
+        except Exception as e:
+            print("Delete Error:", e)
+        finally:
+            db.close()
+
     def get_item(self, Key):
         db = SessionLocal()
         if not db:
