@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { ArrowLeft, Server, AlertTriangle, Activity, Database, DollarSign, Layers, RefreshCw, Copy, ExternalLink, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Server, AlertTriangle, Activity, Database, DollarSign, Layers, RefreshCw, Copy, ExternalLink, ShieldAlert, HardDrive, Wifi } from "lucide-react";
 import ResourceRiskSummaryCards from "@/components/resource-intelligence/ResourceRiskSummaryCards";
 import ResourceRiskList from "@/components/resource-intelligence/ResourceRiskList";
 
@@ -149,27 +149,39 @@ export default function AwsResourceDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[50vh]">
-        <div className="flex flex-col items-center gap-4">
-          <Activity className="w-8 h-8 text-indigo-500 animate-spin" />
-          <p className="text-slate-400">Loading AWS Resource Details...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border border-sky-500/20 flex items-center justify-center">
+                <Activity className="w-7 h-7 text-sky-400 animate-spin" />
+              </div>
+              <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-xl animate-pulse" />
+            </div>
+            <div className="text-center">
+              <p className="text-slate-200 font-semibold text-sm">Loading Resource Details</p>
+              <p className="text-slate-500 text-xs font-mono mt-1 tracking-wider">FETCHING AWS DATA...</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!resource) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-200 flex items-center gap-2 mb-6">
-          <ArrowLeft className="w-4 h-4" /> Back to Inventory
-        </button>
-        <div className="glass-panel p-12 text-center rounded-xl border border-rose-500/30">
-          <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-100">Resource Not Found</h2>
-          <p className="text-slate-400 mt-2">The specified AWS resource could not be found or you lack permissions to view it.</p>
+      <DashboardLayout>
+        <div className="p-8 max-w-7xl mx-auto">
+          <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-200 flex items-center gap-2 mb-6">
+            <ArrowLeft className="w-4 h-4" /> Back to Inventory
+          </button>
+          <div className="p-12 text-center rounded-2xl border border-rose-500/20 bg-rose-500/5">
+            <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-slate-100">Resource Not Found</h2>
+            <p className="text-slate-400 mt-2">The specified AWS resource could not be found or you lack permissions to view it.</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 

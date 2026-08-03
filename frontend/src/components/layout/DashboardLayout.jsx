@@ -64,18 +64,22 @@ export default function DashboardLayout({ children }) {
               <span>Telemetry Active</span>
             </div>
 
-            {/* Quick Logout Header Trigger */}
+            {/* Role Pill (non-clickable) */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.07] text-xs font-medium">
+              <User size={13} className="text-sky-400" />
+              <span className="text-slate-300 capitalize">{userRole}</span>
+            </div>
+
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/15 border border-white/[0.08] hover:border-rose-500/30 text-slate-300 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/15 border border-white/[0.08] hover:border-rose-500/30 text-slate-400 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer"
               title="Logout from session"
             >
-              <User size={13} className="text-sky-400" />
-              <span className="capitalize">{userRole}</span>
-              <span className="text-slate-600">|</span>
               <LogOut size={13} className="text-rose-400" />
               <span>Logout</span>
             </button>
+
           </div>
         </header>
 
