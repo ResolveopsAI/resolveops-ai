@@ -29,12 +29,13 @@ from database import (
 )
 import notifications
 from predictive_engine import PredictiveEngine
-from pg_database import init_pg_db, get_db, Artifact, AuditLog, ContainerAction
+from pg_database import init_pg_db, get_db, Artifact, AuditLog, ContainerAction, HealingAction
 from mcp_security import verify_mcp_service
 from storage import init_storage, upload_artifact_blob, download_artifact_blob
 from auth.authorization import require_permission
 from auth.roles import get_role_permissions
 from audit import log_audit_event
+import self_healing_engine
 
 # Initialize Predictive Engine
 predictive_engine = PredictiveEngine()
@@ -946,6 +947,106 @@ def ingest_telemetry(event: NexusEvent, current_user: dict = Depends(get_current
                     deployment_context=latest_deploy,
                     full_name=current_user.get("full_name", "")
                 )
+
+                # ── Self-Healing Pipeline ─────────────────────────────────────
+                try:
+                    # Gather available cloud credentials for this tenant
+                    _integrations = get_user_integrations(tenant_email)
+                    _kubeconfig = None
+                    _aws_creds = None
+
+                    # Try to fetch AKS kubeconfig if Azure is connected
+                    _azure = _integrations.get("azure", {})
+                    if _azure.get("connected") and _azure.get("credentials"):
+                        try:
+                            from azure.identity import ClientSecretCredential
+                            from kubernetes_helper import fetch_aks_kubeconfig
+                            _creds_az = _azure["credentials"]
+                            _az_cred = ClientSecretCredential(
+                                tenant_id=_creds_az.get("tenant_id"),
+                                client_id=_creds_az.get("client_id"),
+                                client_secret=_creds_az.get("client_secret")
+                            )
+                            _sub_id = _creds_az.get("subscription_id", "")
+                            _rg = _creds_az.get("resource_group", "")
+                            _cluster = _creds_az.get("cluster_name", "")
+                            if _sub_id and _rg and _cluster:
+                                _kubeconfig = fetch_aks_kubeconfig(_az_cred, _sub_id, _rg, _cluster)
+                        except Exception as _kube_err:
+                            print(f"[SelfHealing] Could not fetch kubeconfig: {_kube_err}")
+
+                    # Use AWS creds if connected
+                    _aws = _integrations.get("aws", {})
+                    if _aws.get("connected") and _aws.get("credentials"):
+                        _aws_creds = _aws["credentials"]
+
+                    healing_result = self_healing_engine.execute(
+                        prediction_details=prediction,
+                        tenant_email=tenant_email,
+                        tenant_id=tenant_id,
+                        kubeconfig_yaml=_kubeconfig,
+                        aws_creds=_aws_creds,
+                    )
+
+                    if healing_result:
+                        # Persist HealingAction record
+                        _db = pg_database.SessionLocal()
+                        if _db:
+                            try:
+                                _ha = HealingAction(
+                                    tenant_id=tenant_id,
+                                    service=prediction["service"],
+                                    failure_type=prediction["failure_type"],
+                                    risk_score=float(prediction.get("risk_score", 0)),
+                                    confidence_score=float(prediction.get("confidence_score", 0)),
+                                    action_taken=healing_result["action_taken"],
+                                    target_resource=healing_result["target_resource"],
+                                    status=healing_result["status"],
+                                    result_message=healing_result["result_message"],
+                                    auto_resolved=healing_result["status"] == "success",
+                                )
+                                _db.add(_ha)
+                                _db.commit()
+                                _db.refresh(_ha)
+                                _healing_id = _ha.id
+                            except Exception as _db_err:
+                                print(f"[SelfHealing] DB persist failed: {_db_err}")
+                                _db.rollback()
+                                _healing_id = None
+                            finally:
+                                _db.close()
+                        else:
+                            _healing_id = None
+
+                        # Audit log
+                        log_audit_event(
+                            action="self_healing_triggered",
+                            actor_email=tenant_email,
+                            target_type="service",
+                            target_name=prediction["service"],
+                            status=healing_result["status"],
+                            sanitized_parameters={
+                                "failure_type": prediction["failure_type"],
+                                "risk_score": prediction.get("risk_score"),
+                                "confidence_score": prediction.get("confidence_score"),
+                                "action_taken": healing_result["action_taken"],
+                            },
+                        )
+
+                        # Send self-healing notification email
+                        notifications.notify_self_healing_action(
+                            tenant_email=tenant_email,
+                            service=prediction["service"],
+                            failure_type=prediction["failure_type"],
+                            risk_score=prediction["risk_score"],
+                            confidence_score=prediction["confidence_score"],
+                            action_taken=healing_result["action_taken"],
+                            status=healing_result["status"],
+                            result_message=healing_result["result_message"],
+                            full_name=current_user.get("full_name", ""),
+                        )
+                except Exception as _heal_outer:
+                    print(f"[SelfHealing] Outer error (non-fatal): {_heal_outer}")
             
         return {"status": "success", "message": "Log ingested and processed"}
     except Exception as e:
@@ -1020,6 +1121,7 @@ def ingest_prom_grafana(event: PromGrafanaEvent, current_user: dict = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/v1/incidents/predictive")
 def get_predictive_incidents(current_user: dict = Depends(get_current_user)):
     try:
@@ -1029,7 +1131,248 @@ def get_predictive_incidents(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Incident Management ---
+
+# ── Self-Healing Management Routes ────────────────────────────────────────────
+
+@app.get("/api/v1/healing/actions")
+def get_healing_actions(
+    limit: int = Query(50, le=200),
+    current_user: dict = Depends(get_current_user)
+):
+    """List all self-healing actions for the authenticated tenant."""
+    tenant_id = current_user.get("user_id")
+    db = pg_database.SessionLocal()
+    if not db:
+        return []
+    try:
+        rows = (
+            db.query(HealingAction)
+            .filter(HealingAction.tenant_id == tenant_id)
+            .order_by(HealingAction.triggered_at.desc())
+            .limit(limit)
+            .all()
+        )
+        results = []
+        for r in rows:
+            results.append({
+                "id": r.id,
+                "triggered_at": r.triggered_at.isoformat() + "Z" if r.triggered_at else None,
+                "service": r.service,
+                "failure_type": r.failure_type,
+                "risk_score": r.risk_score,
+                "confidence_score": r.confidence_score,
+                "action_taken": r.action_taken,
+                "target_resource": r.target_resource,
+                "status": r.status,
+                "result_message": r.result_message,
+                "incident_id": r.incident_id,
+                "auto_resolved": r.auto_resolved,
+            })
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/healing/actions/{action_id}")
+def get_healing_action(action_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific self-healing action by ID."""
+    tenant_id = current_user.get("user_id")
+    db = pg_database.SessionLocal()
+    if not db:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    try:
+        row = db.query(HealingAction).filter(
+            HealingAction.id == action_id,
+            HealingAction.tenant_id == tenant_id
+        ).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Healing action not found")
+        return {
+            "id": row.id,
+            "triggered_at": row.triggered_at.isoformat() + "Z" if row.triggered_at else None,
+            "service": row.service,
+            "failure_type": row.failure_type,
+            "risk_score": row.risk_score,
+            "confidence_score": row.confidence_score,
+            "action_taken": row.action_taken,
+            "target_resource": row.target_resource,
+            "status": row.status,
+            "result_message": row.result_message,
+            "incident_id": row.incident_id,
+            "auto_resolved": row.auto_resolved,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class ManualHealRequest(BaseModel):
+    service: str
+    failure_type: str = "Manual Trigger"
+    reason: str
+
+@app.post("/api/v1/healing/trigger")
+def trigger_healing_manually(
+    req: ManualHealRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Manually trigger a self-healing action for a service. Admin only."""
+    if current_user.get("role", "user") not in ("admin", "administrator"):
+        raise HTTPException(status_code=403, detail="Admin role required to trigger healing.")
+
+    tenant_id = current_user.get("user_id")
+    tenant_email = current_user.get("email")
+
+    # Build a synthetic prediction for the engine
+    synthetic_prediction = {
+        "service": req.service,
+        "failure_type": req.failure_type,
+        "risk_score": 90,
+        "confidence_score": 95,  # Manual trigger always clears the gate
+        "recent_logs": [],
+        "metrics": {},
+    }
+
+    # Gather credentials
+    try:
+        _integrations = get_user_integrations(tenant_email)
+        _kubeconfig = None
+        _aws_creds = None
+
+        _azure = _integrations.get("azure", {})
+        if _azure.get("connected") and _azure.get("credentials"):
+            try:
+                from azure.identity import ClientSecretCredential
+                from kubernetes_helper import fetch_aks_kubeconfig
+                _creds_az = _azure["credentials"]
+                _az_cred = ClientSecretCredential(
+                    tenant_id=_creds_az.get("tenant_id"),
+                    client_id=_creds_az.get("client_id"),
+                    client_secret=_creds_az.get("client_secret")
+                )
+                _sub_id = _creds_az.get("subscription_id", "")
+                _rg = _creds_az.get("resource_group", "")
+                _cluster = _creds_az.get("cluster_name", "")
+                if _sub_id and _rg and _cluster:
+                    _kubeconfig = fetch_aks_kubeconfig(_az_cred, _sub_id, _rg, _cluster)
+            except Exception as _ke:
+                print(f"[SelfHealing/Manual] kubeconfig fetch failed: {_ke}")
+
+        _aws = _integrations.get("aws", {})
+        if _aws.get("connected") and _aws.get("credentials"):
+            _aws_creds = _aws["credentials"]
+
+        healing_result = self_healing_engine.execute(
+            prediction_details=synthetic_prediction,
+            tenant_email=tenant_email,
+            tenant_id=tenant_id,
+            kubeconfig_yaml=_kubeconfig,
+            aws_creds=_aws_creds,
+        )
+
+        if not healing_result:
+            return {"status": "skipped", "message": "Healing engine did not trigger (cooldown or disabled)."}
+
+        # Persist
+        _db = pg_database.SessionLocal()
+        if _db:
+            try:
+                _ha = HealingAction(
+                    tenant_id=tenant_id,
+                    service=req.service,
+                    failure_type=req.failure_type,
+                    risk_score=90.0,
+                    confidence_score=95.0,
+                    action_taken=healing_result["action_taken"],
+                    target_resource=healing_result["target_resource"],
+                    status=healing_result["status"],
+                    result_message=f"[MANUAL by {tenant_email}] Reason: {req.reason}. {healing_result['result_message']}",
+                    auto_resolved=healing_result["status"] == "success",
+                )
+                _db.add(_ha)
+                _db.commit()
+            except Exception as _dbe:
+                _db.rollback()
+                print(f"[SelfHealing/Manual] DB persist error: {_dbe}")
+            finally:
+                _db.close()
+
+        log_audit_event(
+            action="self_healing_manual_trigger",
+            actor_user_id=tenant_id,
+            actor_email=tenant_email,
+            actor_role=current_user.get("role"),
+            target_type="service",
+            target_name=req.service,
+            status=healing_result["status"],
+            reason=req.reason,
+            sanitized_parameters={"failure_type": req.failure_type, "action_taken": healing_result["action_taken"]},
+        )
+
+        return {
+            "status": "success",
+            "action_taken": healing_result["action_taken"],
+            "target_resource": healing_result["target_resource"],
+            "result_status": healing_result["status"],
+            "result_message": healing_result["result_message"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class HealingConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    confidence_threshold: Optional[int] = None
+
+@app.get("/api/v1/healing/config")
+def get_healing_config(current_user: dict = Depends(get_current_user)):
+    """Get current self-healing configuration."""
+    return {
+        "enabled": self_healing_engine.SELF_HEALING_ENABLED,
+        "confidence_threshold": self_healing_engine.HEAL_CONFIDENCE_THRESHOLD,
+        "cooldown_seconds": self_healing_engine.HEAL_COOLDOWN_SECONDS,
+    }
+
+@app.put("/api/v1/healing/config")
+def update_healing_config(
+    req: HealingConfigUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update self-healing configuration at runtime. Admin only."""
+    if current_user.get("role", "user") not in ("admin", "administrator"):
+        raise HTTPException(status_code=403, detail="Admin role required.")
+
+    if req.enabled is not None:
+        self_healing_engine.SELF_HEALING_ENABLED = req.enabled
+    if req.confidence_threshold is not None:
+        if not (50 <= req.confidence_threshold <= 99):
+            raise HTTPException(status_code=400, detail="confidence_threshold must be between 50 and 99.")
+        self_healing_engine.HEAL_CONFIDENCE_THRESHOLD = req.confidence_threshold
+
+    log_audit_event(
+        action="self_healing_config_updated",
+        actor_email=current_user.get("email"),
+        actor_role=current_user.get("role"),
+        target_type="config",
+        target_name="self_healing",
+        sanitized_parameters=req.model_dump(exclude_none=True),
+    )
+
+    return {
+        "status": "updated",
+        "enabled": self_healing_engine.SELF_HEALING_ENABLED,
+        "confidence_threshold": self_healing_engine.HEAL_CONFIDENCE_THRESHOLD,
+        "cooldown_seconds": self_healing_engine.HEAL_COOLDOWN_SECONDS,
+    }
+
+
 @app.get("/api/v1/incidents")
 def get_incidents(current_user: dict = Depends(get_current_user)):
     try:

@@ -141,6 +141,22 @@ class AuditLog(Base):
     event_hash = Column(String(255), nullable=True)
     previous_event_hash = Column(String(255), nullable=True)
 
+class HealingAction(Base):
+    __tablename__ = 'healing_actions'
+    id                  = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id           = Column(String(255), nullable=False, index=True)
+    triggered_at        = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, index=True)
+    service             = Column(String(255), nullable=False, index=True)
+    failure_type        = Column(String(255), nullable=False)
+    risk_score          = Column(Float, nullable=True)
+    confidence_score    = Column(Float, nullable=True)
+    action_taken        = Column(String(255), nullable=False)  # e.g. "k8s_rollout_restart", "ec2_start", "simulated"
+    target_resource     = Column(String(512), nullable=True)   # deployment name, instance-id, queue URL
+    status              = Column(String(50), nullable=False, default="simulated", index=True)  # "success" | "failed" | "simulated"
+    result_message      = Column(Text, nullable=True)
+    incident_id         = Column(String(255), nullable=True)
+    auto_resolved       = Column(Boolean, default=False)
+
 class ContainerAction(Base):
     __tablename__ = 'container_actions'
     action_id = Column(String(255), primary_key=True)

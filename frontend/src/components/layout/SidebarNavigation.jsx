@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Cloud, GitBranch, LayoutDashboard, MessageSquareCode, Lightbulb,
   BarChart3, Settings, Server, PanelLeftClose, PanelLeftOpen,
-  MonitorDot
+  MonitorDot, Zap
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -76,6 +76,7 @@ export default function SidebarNavigation() {
     { name: "Suggestions",    path: "/suggestions", icon: Lightbulb, always: true },
     { name: "Analytics",      path: "/analytics",   icon: BarChart3, always: true },
     ...(userRole === "admin" ? [{ name: "Monitoring",     path: "/analytics/monitoring", icon: MonitorDot }] : []),
+    ...(userRole === "admin" ? [{ name: "Self-Healing",   path: "/healing",              icon: Zap }] : []),
     { name: "Integrations",   path: "/integrations",icon: Settings,   always: true },
   ];
 

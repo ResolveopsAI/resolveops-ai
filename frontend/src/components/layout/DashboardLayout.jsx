@@ -32,6 +32,7 @@ export default function DashboardLayout({ children }) {
     if (path.startsWith("/azure")) return "Azure Hub";
     if (path.startsWith("/aws")) return "AWS Hub";
     if (path.startsWith("/audit")) return "Audit Logs";
+    if (path.startsWith("/healing")) return "Self-Healing Engine";
     return "ResolveOps AI";
   };
 

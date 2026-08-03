@@ -280,3 +280,80 @@ def notify_pipeline_failure(
     subject = f"[Failed] Pipeline Error Detected in {repository}"
     return _send_smtp(tenant_email, subject, _html_wrapper("Automated Pipeline Diagnosis", body))
 
+
+def notify_self_healing_action(
+    tenant_email: str,
+    service: str,
+    failure_type: str,
+    risk_score: float,
+    confidence_score: float,
+    action_taken: str,
+    status: str,
+    result_message: str,
+    full_name: str = "",
+) -> bool:
+    """Send a notification email when the self-healing engine fires."""
+
+    # Status colour and label
+    if status == "success":
+        status_color = "#10b981"
+        status_label = "✅ Auto-Healed Successfully"
+        border_color = "#10b981"
+    elif status == "simulated":
+        status_color = "#f59e0b"
+        status_label = "⚙️ Simulated (No Credentials)"
+        border_color = "#f59e0b"
+    else:
+        status_color = "#ef4444"
+        status_label = "❌ Healing Action Failed"
+        border_color = "#ef4444"
+
+    action_label = action_taken.replace("_", " ").title()
+    greeting = f"Hello {full_name}," if full_name else "Hello,"
+
+    body = f"""
+        <p style="font-size:15px; color:#e2e8f0;">{greeting}</p>
+        <p style="font-size:14px; color:#94a3b8; margin-bottom:20px;">
+          ResolveOps AI's Self-Healing Engine detected an anomaly and automatically attempted remediation.
+          Here's a summary of what happened:
+        </p>
+
+        <div style="background:#0f172a; border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:20px; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <div style="width:12px; height:12px; border-radius:50%; background:{status_color}; box-shadow: 0 0 8px {status_color};"></div>
+            <span style="font-size:15px; font-weight:700; color:{status_color};">{status_label}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:8px 0; color:#64748b; width:40%;">Service</td>
+              <td style="padding:8px 0; color:#f1f5f9; font-weight:600;">{service}</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:8px 0; color:#64748b;">Failure Type</td>
+              <td style="padding:8px 0; color:#fbbf24; font-weight:600;">{failure_type}</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:8px 0; color:#64748b;">Risk Score</td>
+              <td style="padding:8px 0; color:#f87171; font-weight:600;">{risk_score}/100</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:8px 0; color:#64748b;">Confidence</td>
+              <td style="padding:8px 0; color:#a78bfa; font-weight:600;">{confidence_score}/100</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+              <td style="padding:8px 0; color:#64748b;">Action Taken</td>
+              <td style="padding:8px 0; color:#38bdf8; font-weight:600;">{action_label}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background:#0f172a; border-left:4px solid {border_color}; border-radius:8px; padding:16px; margin-bottom:20px;">
+          <h4 style="margin:0 0 8px 0; color:#e2e8f0; font-size:13px; text-transform:uppercase; letter-spacing:0.1em;">Result Details</h4>
+          <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.6;">{result_message}</p>
+        </div>
+
+        <a href="{DASHBOARD_URL}/healing" class="btn">View Healing Dashboard →</a>
+    """
+
+    subject = f"[Self-Healing] {service} — {status_label}"
+    return _send_smtp(tenant_email, subject, _html_wrapper("Self-Healing Engine Report", body))
