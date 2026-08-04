@@ -1,254 +1,174 @@
-"""
-AI-RCA Service — FastAPI entrypoint.
-
-Responsibilities:
-  - Incident investigation (POST /api/v1/rca/investigate)  ← new MCP-powered flow
-  - Chat handling (POST /api/v1/rca/chat)                  ← new, when AI_RCA_CHAT_ENABLED
-  - Legacy analyze endpoint (POST /api/v1/rca/analyze)     ← preserved, feature-flag fallback
-  - Provider status (GET  /api/v1/ai/provider-status)      ← new
-  - Health check  (GET  /health)
-
-Feature flags (all env-var controlled):
-  MCP_RCA_ENABLED          – use MCP tools for investigation
-  AI_RCA_CHAT_ENABLED      – this service handles chat requests from API Gateway
-  LEGACY_GATEWAY_RAG_ENABLED – legacy RAG path (controlled in api-gateway-service)
-"""
-import logging
-import sys
-
-# ── Logging must be configured before any other imports ──────────────────────
-from app.logging_config import configure_logging
-from app.settings import settings
-configure_logging(settings.LOG_LEVEL)
-
-logger = logging.getLogger(__name__)
-
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import os
 import re
 import json
-import uuid
-from contextlib import asynccontextmanager
+from typing import List, Dict, Optional
+from ai_rca_service import PredictiveEngine
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import Optional
+app = FastAPI(title="ai-rca-service")
 
-from app.settings import settings
-from app.errors import (
-    ErrorCode,
-    build_error_response,
-    classify_provider_exception,
-)
-from app.bedrock_client import bedrock_client, _SafeError
-from app.agent.orchestrator import orchestrator
-from app.schemas.investigation import InvestigationRequest, ChatRequest
-
-
-# ── Lifespan ──────────────────────────────────────────────────────────────────
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup — validate configuration and log effective settings
-    warnings = settings.validate()
-    for w in warnings:
-        logger.warning("Configuration warning", extra={"detail": w})
-
-    openai_key_configured = bool(settings.OPENAI_API_KEY)
-    logger.info(
-        "AI-RCA service starting",
-        extra={
-            "provider": settings.AI_PROVIDER,
-            "model": settings.OPENAI_MODEL if settings.AI_PROVIDER == "openai" else settings.BEDROCK_MODEL_ID,
-            "openai_api_key_configured": openai_key_configured,
-            "mcp_enabled": settings.MCP_RCA_ENABLED,
-            "chat_via_rca": settings.AI_RCA_CHAT_ENABLED,
-            "fallback_enabled": settings.OPENAI_FALLBACK_ENABLED,
-            "rag_provider": settings.RAG_PROVIDER,
-        },
-    )
-    yield
-    logger.info("AI-RCA service shutting down")
-
-
-app = FastAPI(title="ai-rca-service", lifespan=lifespan)
-
-
-# ── Health + Status ───────────────────────────────────────────────────────────
+# Initialize PredictiveEngine for generating self-healing steps
+engine = PredictiveEngine()
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy",
-        "service": "ai-rca-service",
-        "provider": settings.AI_PROVIDER,
-        "mcp_enabled": settings.MCP_RCA_ENABLED,
-        "chat_enabled": settings.AI_RCA_CHAT_ENABLED,
-    }
+    return {"status": "healthy", "service": "ai-rca-service"}
 
+class SelfHealingRCARequest(BaseModel):
+    service: str
+    failure_type: str
+    risk_score: int = 80
+    confidence_score: int = 85
+    recent_logs: List[dict] = []
+    instance_info: Optional[dict] = None
 
-@app.get("/api/v1/ai/provider-status")
-def get_provider_status():
-    """
-    Returns safe, user-facing provider status.
-    Never exposes: credentials, API keys, account IDs, internal exceptions.
-    """
-    return settings.provider_status_dict()
-
-
-# ── New: Structured Investigation Endpoint ────────────────────────────────────
-
-@app.post("/api/v1/rca/investigate")
-async def investigate(req: InvestigationRequest, request: Request):
-    """
-    MCP-powered incident investigation.
-
-    Accepts: incident_id, service, question, time_window_minutes
-    Returns: structured RCA with live evidence, tools used, confidence.
-
-    Execution path: mcp_rca (when MCP_RCA_ENABLED=true)
-                    direct_bedrock (when MCP_RCA_ENABLED=false)
-    """
-    if not req.incident_id and not req.service and not req.question:
-        raise HTTPException(
-            status_code=400,
-            detail="At least one of incident_id, service, or question is required.",
+@app.post("/api/v1/rca/self-healing")
+def self_healing_rca(req: SelfHealingRCARequest):
+    try:
+        prediction_details = {
+            "service": req.service,
+            "failure_type": req.failure_type,
+            "risk_score": req.risk_score,
+            "confidence_score": req.confidence_score,
+            "recent_logs": req.recent_logs,
+            "metrics": {}
+        }
+        res = engine.generate_self_healing_rca(
+            prediction_details=prediction_details,
+            instance_info=req.instance_info
         )
+        return res
+    except Exception as e:
+        # Return fallback commands if Bedrock invocation fails
+        fallback_actions = [
+            {
+                "step": 1,
+                "command": "df -h && free -m && uptime",
+                "description": "Gather basic system diagnostics",
+                "risk_level": "none",
+                "action_type": "diagnostic",
+                "reversible": True,
+                "causes_downtime": False,
+                "rollback_command": None
+            }
+        ]
+        return {
+            "probable_cause": f"Heuristic match for {req.failure_type} (LLM Error: {str(e)})",
+            "risk_assessment": "Manual checks required.",
+            "suggested_remediation": "Check logs and run diagnostics.",
+            "executable_actions": fallback_actions
+        }
 
-    result = await orchestrator.investigate(req)
-
-    # If the orchestrator returned an error response, preserve the structure
-    if result.get("status") == "error":
-        return JSONResponse(status_code=200, content=result)
-
-    return result
-
-
-# ── New: Chat Endpoint (AI_RCA_CHAT_ENABLED) ─────────────────────────────────
-
-@app.post("/api/v1/rca/chat")
-async def chat(req: ChatRequest):
-    """
-    Chat handler for AI-RCA — called by API Gateway when AI_RCA_CHAT_ENABLED=true.
-    Returns a structured response with execution_path for frontend audit.
-    """
-    if not req.message or not req.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
-
-    result = await orchestrator.chat(
-        message=req.message,
-        session_id=req.session_id,
-        tenant_id=req.tenant_id,
-        tenant_email=req.tenant_email,
-        previous_visual_spec=req.previous_visual_spec,
-    )
-    return result
-
-
-# ── Legacy: /api/v1/rca/analyze (preserved, feature-flag fallback) ────────────
 
 class AnalyzeRequest(BaseModel):
     source: str
     context: str
     logs: str
 
-
 @app.post("/api/v1/rca/analyze")
 def analyze_rca(req: AnalyzeRequest):
-    """
-    Legacy analyze endpoint — preserved for backwards compatibility.
-    Called by github-intelligence-service and legacy API Gateway path.
+    ai_provider = os.getenv("AI_PROVIDER", "bedrock")
+    
+    prompt = f"""
+You are an expert DevSecOps SRE Assistant.
+Analyze the following logs for root cause analysis.
+Context: {req.context}
+Logs:
+{req.logs}
 
-    Uses the centralised bedrock_client (not raw boto3).
-    Never exposes raw provider exceptions.
-    """
-    request_id = str(uuid.uuid4())
+Generate your analysis in valid JSON format with the following keys:
+- summary: Short title of the issue
+- probable_root_cause: Detailed explanation
+- recommended_fix: Array of string steps to fix
+- evidence: Array of log lines proving the root cause
+"""
 
-    prompt = (
-        "You are an expert DevSecOps SRE Assistant.\n"
-        "Analyze the following logs for root cause analysis.\n"
-        f"Context: {req.context}\n"
-        f"Logs:\n{req.logs}\n\n"
-        "Return a JSON object with keys: summary, probable_root_cause, "
-        "recommended_fix (array), evidence (array)."
-    )
+    if ai_provider == "azure_foundry":
+        # Use Azure AI Foundry
+        azure_endpoint = os.getenv("AZURE_AI_FOUNDRY_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_api_key = os.getenv("AZURE_AI_FOUNDRY_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
+        azure_deployment = os.getenv("AZURE_AI_FOUNDRY_DEPLOYMENT_NAME") or os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        
+        if not azure_endpoint or not azure_api_key:
+            raise HTTPException(status_code=500, detail="Azure AI Foundry credentials not configured")
+            
+        try:
+            from langchain_openai import AzureChatOpenAI
+            from langchain_core.messages import HumanMessage, SystemMessage
+            
+            chat = AzureChatOpenAI(
+                azure_endpoint=azure_endpoint,
+                api_key=azure_api_key,
+                azure_deployment=azure_deployment,
+                api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15"),
+                temperature=0.1,
+            )
+            
+            res = chat.invoke([
+                SystemMessage(content="You are a helpful AI that returns strictly valid JSON."),
+                HumanMessage(content=prompt)
+            ])
+            
+            content = res.content
+            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            parsed = json.loads(content)
+            
+            return {
+                "status": "success",
+                "analysis": {
+                    "status": "ai_generated",
+                    "provider": "azure_foundry",
+                    "summary": parsed.get("summary", "Analysis"),
+                    "probable_root_cause": parsed.get("probable_root_cause", ""),
+                    "recommended_fix": parsed.get("recommended_fix", []),
+                    "evidence": parsed.get("evidence", []),
+                    "ai_provider_status": "available"
+                }
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Azure AI Foundry error: {str(e)}")
 
-    try:
-        raw = bedrock_client.invoke(
-            prompt=prompt,
-            system_prompt="You are a helpful AI that returns strictly valid JSON.",
-            max_tokens=2048,
-            temperature=0.1,
-            request_id=request_id,
-        )
-
-        # Extract JSON
-        json_match = re.search(r"(\{.*\})", raw, re.DOTALL)
-        if json_match:
-            raw = json_match.group(1)
-        parsed = json.loads(raw)
-
-        return {
-            "status": "success",
-            "execution_path": "legacy_analyze",
-            "request_id": request_id,
-            "analysis": {
-                "status": "ai_generated",
-                "provider": settings.AI_PROVIDER,
-                "summary": parsed.get("summary", "Analysis"),
-                "probable_root_cause": parsed.get("probable_root_cause", ""),
-                "recommended_fix": parsed.get("recommended_fix", []),
-                "evidence": parsed.get("evidence", []),
-                "ai_provider_status": "available",
-            },
-        }
-
-    except _SafeError as exc:
-        # Return safe error structure — never HTTP 500 with raw detail
-        logger.error(
-            "Legacy analyze failed",
-            extra={"request_id": request_id, "error_code": exc.response["error"]["code"]},
-        )
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "error",
-                "execution_path": "legacy_analyze",
-                "request_id": request_id,
-                **exc.response,
-            },
-        )
-
-    except (json.JSONDecodeError, ValueError):
-        # Bedrock returned text but not valid JSON — return raw text with degraded status
-        return {
-            "status": "success",
-            "execution_path": "legacy_analyze",
-            "request_id": request_id,
-            "analysis": {
-                "status": "ai_generated",
-                "provider": settings.AI_PROVIDER,
-                "summary": "Analysis (unstructured)",
-                "probable_root_cause": raw[:2000] if isinstance(raw, str) else str(raw)[:2000],
-                "recommended_fix": [],
-                "evidence": [],
-                "ai_provider_status": "available",
-            },
-        }
-
-    except Exception as exc:
-        code = classify_provider_exception(exc)
-        logger.error(
-            "Legacy analyze unexpected error",
-            extra={"request_id": request_id, "exc_type": type(exc).__name__, "error_code": code},
-        )
-        err = build_error_response(code, request_id)
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "error",
-                "execution_path": "legacy_analyze",
-                "request_id": request_id,
-                **err,
-            },
-        )
+    elif ai_provider == "bedrock":
+        try:
+            import boto3
+            from langchain_aws import ChatBedrock
+            from langchain_core.messages import HumanMessage, SystemMessage
+            
+            aws_region = os.getenv("AWS_REGION", "us-east-1")
+            bedrock_client = boto3.client("bedrock-runtime", region_name=aws_region)
+            chat = ChatBedrock(
+                client=bedrock_client,
+                model_id=os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"),
+                model_kwargs={"temperature": 0.1}
+            )
+            
+            res = chat.invoke([
+                SystemMessage(content="You are a helpful AI that returns strictly valid JSON."),
+                HumanMessage(content=prompt)
+            ])
+            
+            content = res.content
+            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            parsed = json.loads(content)
+            
+            return {
+                "status": "success",
+                "analysis": {
+                    "status": "ai_generated",
+                    "provider": "bedrock",
+                    "summary": parsed.get("summary", "Analysis"),
+                    "probable_root_cause": parsed.get("probable_root_cause", ""),
+                    "recommended_fix": parsed.get("recommended_fix", []),
+                    "evidence": parsed.get("evidence", []),
+                    "ai_provider_status": "available"
+                }
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Amazon Bedrock error: {str(e)}")
+            
+    raise HTTPException(status_code=500, detail="No valid AI provider configured")

@@ -232,3 +232,219 @@ class PredictiveEngine:
             "probable_cause": probable_cause,
             "suggested_remediation": remediation
         }
+
+    # --- Self-Healing: Unrestricted AI Problem-Solving ---
+
+    SELF_HEALING_SYSTEM_PROMPT = (
+        "You are an expert DevSecOps SRE with unrestricted problem-solving capabilities.\n"
+        "You have deep expertise across ALL domains of systems engineering:\n\n"
+        "- Disk, filesystem, inode, and storage issues\n"
+        "- Memory management, OOM, swap, cache pressure\n"
+        "- CPU saturation, runaway processes, load spikes\n"
+        "- Network: DNS, routing, firewall, iptables, MTU, TCP tuning\n"
+        "- Containers: Docker, containerd, CRI-O, orchestration issues\n"
+        "- Databases: MySQL, PostgreSQL, MongoDB, Redis — locks, replication, corruption\n"
+        "- Web servers: Nginx, Apache, HAProxy — config, certs, upstream failures\n"
+        "- SSL/TLS: certificate expiry, chain issues, protocol mismatches\n"
+        "- Kernel: sysctl tuning, file descriptor limits, inode exhaustion\n"
+        "- Systemd: service failures, dependency ordering, resource limits\n"
+        "- Cron: stuck jobs, overlapping schedules, permission issues\n"
+        "- Security: compromised processes, unauthorized access, firewall lockouts\n"
+        "- Application: JVM heap, Python GC, Node.js event loop, Go goroutine leaks\n"
+        "- Cloud-native: ECS tasks, EKS pods, Lambda cold starts, SQS backlogs\n"
+        "- Package management: apt, yum, pip, npm — broken deps, corrupted state\n"
+        "- Log management: rotation, saturation, syslog, journald\n\n"
+        "When analyzing an issue, you MUST:\n"
+        "1. First propose DIAGNOSTIC commands to understand the current state\n"
+        "2. Then propose REMEDIATION commands based on the likely diagnosis\n"
+        "3. Finally propose VERIFICATION commands to confirm the fix worked\n"
+        "4. Classify each command's risk level honestly: none, low, medium, high, critical\n"
+        "5. Mark whether each action is reversible (true/false)\n"
+        "6. If a command could cause downtime, set causes_downtime to true\n"
+        "7. If applicable, provide a rollback_command to undo the action\n\n"
+        "Generate your response as valid JSON with this exact structure:\n"
+        "{\n"
+        '    "probable_cause": "Clear explanation of what is wrong and why",\n'
+        '    "risk_assessment": "What happens if this is not fixed — timeline and impact",\n'
+        '    "diagnostic_phase": [\n'
+        "        {\n"
+        '            "step": 1,\n'
+        '            "command": "the actual shell command",\n'
+        '            "description": "what this tells us",\n'
+        '            "risk_level": "none",\n'
+        '            "action_type": "diagnostic"\n'
+        "        }\n"
+        "    ],\n"
+        '    "remediation_phase": [\n'
+        "        {\n"
+        '            "step": N,\n'
+        '            "command": "the actual shell command",\n'
+        '            "description": "what this fixes and how",\n'
+        '            "risk_level": "low|medium|high|critical",\n'
+        '            "reversible": true or false,\n'
+        '            "causes_downtime": true or false,\n'
+        '            "rollback_command": "command to undo this if needed or null",\n'
+        '            "action_type": "remediation"\n'
+        "        }\n"
+        "    ],\n"
+        '    "verification_phase": [\n'
+        "        {\n"
+        '            "step": M,\n'
+        '            "command": "the actual shell command",\n'
+        '            "description": "what this confirms",\n'
+        '            "risk_level": "none",\n'
+        '            "action_type": "verification"\n'
+        "        }\n"
+        "    ]\n"
+        "}\n\n"
+        "You are NOT restricted to any predefined list of commands.\n"
+        "Use whatever tools, utilities, and approaches are appropriate for the specific problem.\n"
+        "If you need to install a diagnostic tool (e.g., htop, iotop, strace), include that step.\n"
+        "Be specific. Use real commands with real flags. No placeholders.\n"
+        "Ensure step numbers are sequential across all phases."
+    )
+
+    def generate_self_healing_rca(
+        self,
+        prediction_details: Dict,
+        instance_info: Optional[Dict] = None,
+        deployment_context: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Generates an unrestricted AI-powered self-healing RCA with executable commands.
+        
+        The AI analyzes the issue and produces structured, phased remediation commands
+        (diagnostic → remediation → verification) that can be presented to the user
+        for approval before execution.
+        
+        Returns:
+            {
+                "probable_cause": "...",
+                "risk_assessment": "...",
+                "suggested_remediation": "...",
+                "executable_actions": [
+                    {
+                        "step": 1,
+                        "command": "...",
+                        "description": "...",
+                        "risk_level": "...",
+                        "action_type": "diagnostic|remediation|verification",
+                        "reversible": True/False,
+                        "causes_downtime": True/False,
+                        "rollback_command": "..." or None
+                    }
+                ]
+            }
+        """
+        service = prediction_details.get("service", "unknown")
+        failure_type = prediction_details.get("failure_type", "Unknown failure")
+        risk_score = prediction_details.get("risk_score", 0)
+        confidence_score = prediction_details.get("confidence_score", 0)
+        metrics = prediction_details.get("metrics", {})
+
+        logs_str = "\n".join([
+            f"- [{l.get('timestamp')}] {l.get('level')}: {l.get('message')}"
+            for l in prediction_details.get("recent_logs", [])
+        ])
+
+        dep_str = "No recent deployments or changes correlated."
+        if deployment_context:
+            dep_str = (
+                f"Deployment detected on {deployment_context.get('timestamp')}.\n"
+                f"Commit: {deployment_context.get('commit_sha')} ({deployment_context.get('commit_msg')})\n"
+                f"PR: {deployment_context.get('pr_url')}"
+            )
+
+        instance_str = "No instance context available."
+        if instance_info:
+            instance_str = (
+                f"Instance ID: {instance_info.get('instance_id', 'N/A')}\n"
+                f"OS: {instance_info.get('detected_os', 'unknown')}\n"
+                f"SSH User: {instance_info.get('ssh_user', 'ec2-user')}\n"
+                f"Instance Type: {instance_info.get('instance_type', 'N/A')}\n"
+                f"Region: {instance_info.get('region', 'N/A')}"
+            )
+
+        user_prompt = (
+            "Service: {service}\n"
+            "Predicted Failure Type: {failure_type}\n"
+            "Risk Score: {risk_score}/100 | Confidence: {confidence_score}/100\n"
+            "Current Metrics: {metrics}\n\n"
+            "Instance Context:\n{instance_str}\n\n"
+            "Recent Logs:\n{logs_str}\n\n"
+            "Deployment Context:\n{dep_str}\n\n"
+            "Analyze this issue and return the JSON structure with diagnostic, "
+            "remediation, and verification phases. Be thorough and use real commands."
+        )
+
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", self.SELF_HEALING_SYSTEM_PROMPT),
+            ("human", user_prompt)
+        ])
+
+        chain = prompt_template | self.chat_model | StrOutputParser()
+
+        try:
+            ai_res = chain.invoke({
+                "service": service,
+                "failure_type": failure_type,
+                "risk_score": risk_score,
+                "confidence_score": confidence_score,
+                "metrics": str(metrics),
+                "instance_str": instance_str,
+                "logs_str": logs_str,
+                "dep_str": dep_str
+            })
+
+            import json
+
+            # Extract JSON from possible markdown wrapping
+            json_match = re.search(r'(\{.*\})', ai_res, re.DOTALL)
+            json_str = json_match.group(1) if json_match else ai_res
+
+            parsed = json.loads(json_str)
+
+            probable_cause = parsed.get("probable_cause", "Anomaly detected in operational metrics.")
+            risk_assessment = parsed.get("risk_assessment", "Immediate attention recommended.")
+            suggested_remediation = parsed.get("suggested_remediation", probable_cause)
+
+            # Combine all phases into a single executable_actions list
+            executable_actions = []
+            for phase_key in ["diagnostic_phase", "remediation_phase", "verification_phase"]:
+                phase_actions = parsed.get(phase_key, [])
+                for action in phase_actions:
+                    executable_actions.append({
+                        "step": action.get("step", len(executable_actions) + 1),
+                        "command": action.get("command", ""),
+                        "description": action.get("description", ""),
+                        "risk_level": action.get("risk_level", "none"),
+                        "action_type": action.get("action_type", phase_key.replace("_phase", "")),
+                        "reversible": action.get("reversible", True),
+                        "causes_downtime": action.get("causes_downtime", False),
+                        "rollback_command": action.get("rollback_command")
+                    })
+
+        except Exception as e:
+            logger.error(f"Self-healing RCA generation failed: {e}")
+            probable_cause = f"Automatic heuristic alarm for {failure_type}. AI analysis error: {str(e)}"
+            risk_assessment = "Manual investigation recommended."
+            suggested_remediation = "Check system metrics and logs manually."
+            executable_actions = [
+                {
+                    "step": 1,
+                    "command": "df -h && free -m && uptime && top -bn1 | head -20",
+                    "description": "Gather basic system diagnostics",
+                    "risk_level": "none",
+                    "action_type": "diagnostic",
+                    "reversible": True,
+                    "causes_downtime": False,
+                    "rollback_command": None
+                }
+            ]
+
+        return {
+            "probable_cause": probable_cause,
+            "risk_assessment": risk_assessment,
+            "suggested_remediation": suggested_remediation,
+            "executable_actions": executable_actions
+        }

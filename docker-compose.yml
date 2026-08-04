@@ -74,6 +74,9 @@ services:
         condition: service_healthy
       ai-rca-service:
         condition: service_started
+    environment:
+      - VISUAL_STORAGE_DIR=/app/data/visuals
+      - SSH_CREDENTIAL_SERVICE_URL=http://ssh-credential-service:8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
@@ -209,6 +212,20 @@ services:
       context: ./services/notification-service
     env_file:
       - .env
+    networks:
+      - backend-net
+    restart: unless-stopped
+
+  ssh-credential-service:
+    build:
+      context: ./services/ssh-credential-service
+    ports:
+      - "8007:8000"
+    env_file:
+      - .env
+    environment:
+      - SSH_CREDENTIAL_ENCRYPTION_KEY=${SSH_CREDENTIAL_ENCRYPTION_KEY:-dev-encryption-key-change-in-prod}
+      - AI_RCA_SERVICE_URL=http://ai-rca-service:8000
     networks:
       - backend-net
     restart: unless-stopped
