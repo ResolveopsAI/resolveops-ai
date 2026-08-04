@@ -637,17 +637,17 @@ function AwsSubResources({ subresources, resource }) {
 
         {/* Network Interface Attachment */}
         <div className="p-3.5 bg-[#0a0f1d] border border-white/10 rounded-xl space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
             <div className="flex items-center gap-2">
-              <Wifi size={14} className="text-indigo-400" />
-              <span className="text-xs font-bold text-white font-mono">Elastic Network Interface (ENI)</span>
+              <Wifi size={14} className="text-indigo-400 shrink-0" />
+              <span className="text-xs font-bold text-white font-mono break-words">Elastic Network Interface (ENI)</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">eni-089409df50f364240</span>
+            <span className="text-[10px] font-mono text-slate-400 shrink-0">eni-089409df50f364240</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-1 border-t border-white/5">
-            <div><span className="text-slate-500 block">PRIVATE IP</span><span className="text-slate-200 font-bold">172.31.14.193</span></div>
-            <div><span className="text-slate-500 block">MAC ADDR</span><span className="text-slate-200 font-bold">0a:4f:2b:81:c9:02</span></div>
-            <div><span className="text-slate-500 block">STATUS</span><span className="text-emerald-400 font-bold">in-use (eth0)</span></div>
+          <div className="flex flex-col sm:flex-row sm:gap-6 gap-2 text-[11px] font-mono pt-2 border-t border-white/5">
+            <div><span className="text-slate-500 block mb-0.5">PRIVATE IP</span><span className="text-slate-200 font-bold">172.31.14.193</span></div>
+            <div><span className="text-slate-500 block mb-0.5">MAC ADDR</span><span className="text-slate-200 font-bold">0a:4f:2b:81:c9:02</span></div>
+            <div><span className="text-slate-500 block mb-0.5">STATUS</span><span className="text-emerald-400 font-bold">in-use (eth0)</span></div>
           </div>
         </div>
       </div>
@@ -704,11 +704,11 @@ function AwsRuntime({ runtime, resource }) {
 
   return (
     <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] space-y-4 shadow-xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Server className="w-5 h-5 text-fuchsia-400" /> User Application Workloads & Containers
+          <Server className="w-5 h-5 text-fuchsia-400 shrink-0" /> User Application Workloads & Containers
         </h3>
-        <span className="text-[10px] font-mono text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20">
+        <span className="text-[10px] font-mono text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20 shrink-0">
           Host Docker Engine Active
         </span>
       </div>
@@ -721,24 +721,24 @@ function AwsRuntime({ runtime, resource }) {
       <div className="space-y-3">
         {containers.map((c, idx) => (
           <div key={idx} className="p-4 bg-[#0a0f1d] border border-white/10 rounded-xl space-y-3 hover:border-white/20 transition-all shadow-inner">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <h4 className="text-xs font-bold text-white font-mono">{c.name}</h4>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <h4 className="text-xs font-bold text-white font-mono break-all">{c.name}</h4>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono">{c.image}</span>
+                <span className="text-[10px] text-slate-500 font-mono break-all">{c.image}</span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase">
+              <span className="self-start sm:self-auto px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase shrink-0">
                 {c.status}
               </span>
             </div>
 
             {/* Performance Gauges */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5 text-xs font-mono">
               {/* CPU Utilization Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px]">
+              <div className="space-y-1.5">
+                <div className="flex flex-col xl:flex-row xl:justify-between text-[10px] gap-1">
                   <span className="text-slate-400">CPU UTILIZATION</span>
                   <span className="text-sky-400 font-bold">{c.cpu_pct}%</span>
                 </div>
@@ -751,8 +751,8 @@ function AwsRuntime({ runtime, resource }) {
               </div>
 
               {/* Memory Usage Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px]">
+              <div className="space-y-1.5">
+                <div className="flex flex-col xl:flex-row xl:justify-between text-[10px] gap-1">
                   <span className="text-slate-400">MEMORY USAGE</span>
                   <span className="text-purple-400 font-bold">{c.mem_mb} MB / {c.mem_limit} MB</span>
                 </div>
