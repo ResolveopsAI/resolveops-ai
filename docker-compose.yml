@@ -60,8 +60,6 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      - VISUAL_STORAGE_DIR=/app/data/visuals
     volumes:
       - ./data:/app/data
       - generated_visuals:/app/data/visuals
