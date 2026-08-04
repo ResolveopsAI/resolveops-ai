@@ -264,8 +264,8 @@ export default function AwsResourceDetailPage() {
 
         <AwsResourceMetadataGrid resource={resource} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Side Column: Cost, Relationships, Risks (1/3 width) */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Left Side Column: Cost, Relationships (1/3 width on xl screens) */}
           <div className="space-y-8">
             {/* Cost Intelligence */}
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl">
@@ -275,7 +275,7 @@ export default function AwsResourceDetailPage() {
               {cost ? (
                 <div className="space-y-4">
                   {/* Billed Month to Date */}
-                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10">
+                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 hover:border-emerald-500/30 transition-colors">
                     <p className="text-xs text-slate-400 font-mono">Actual Billed (Month to Date)</p>
                     {cost.actual_cost?.status === "available" ? (
                       <p className="text-2xl font-black font-mono text-emerald-400 mt-1">
@@ -291,7 +291,7 @@ export default function AwsResourceDetailPage() {
                   </div>
 
                   {/* Exact On-Demand Catalog Rate */}
-                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 space-y-3">
+                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 space-y-3 hover:border-sky-500/30 transition-colors">
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-slate-400 font-mono">On-Demand Catalog Rate</p>
                       <span className="px-2 py-0.5 bg-sky-500/15 text-sky-400 border border-sky-500/30 rounded-md text-[9px] uppercase font-bold tracking-wider">
@@ -328,15 +328,15 @@ export default function AwsResourceDetailPage() {
             </div>
 
             {/* Relationship Context */}
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
+            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] hover:border-white/[0.15] transition-colors">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <Layers className="w-5 h-5 text-sky-400" /> Relationship Context
               </h3>
               {relationships && relationships.length > 0 ? (
                 <div className="space-y-3">
                   {relationships.map((rel, i) => (
-                    <div key={i} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{rel.type}</span>
+                    <div key={i} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/[0.04] transition-colors">
+                      <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">{rel.type}</span>
                       <div className="text-xs font-mono text-slate-200 mt-1 truncate" title={rel.id}>{rel.id}</div>
                     </div>
                   ))}
@@ -346,13 +346,10 @@ export default function AwsResourceDetailPage() {
               )}
               <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
             </div>
-            
-            {/* Risk Summary */}
-            <ResourceRiskSummaryCards risks={risks} />
           </div>
 
-          {/* Main Column: Workloads, Sub-Resources, Logs (2/3 width) */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* Main Column: Workloads, Sub-Resources (2/3 width on xl screens) */}
+          <div className="xl:col-span-2 space-y-8">
             
             {/* Sub-Resources */}
             {subresources && (
@@ -361,16 +358,29 @@ export default function AwsResourceDetailPage() {
 
             {/* Runtime Workloads */}
             <AwsRuntime runtime={runtime} resource={resource} />
+          </div>
+        </div>
 
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
-              <h3 className="text-base font-bold text-white mb-4">Risk Analysis</h3>
+        {/* Full Width Bottom Section for Risks & Logs */}
+        <div className="space-y-8 mt-8">
+          <ResourceRiskSummaryCards risks={risks} />
+
+          <div className="glass-panel p-6 md:p-8 rounded-2xl border border-white/[0.08] shadow-2xl relative overflow-hidden group hover:border-white/[0.15] transition-all">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 relative z-10">
+              <ShieldAlert className="w-5 h-5 text-rose-400" /> Risk Analysis & Misconfigurations
+            </h3>
+            <div className="relative z-10">
               <ResourceRiskList risks={risks} />
             </div>
+          </div>
 
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
-              </h3>
+          <div className="glass-panel p-6 md:p-8 rounded-2xl border border-white/[0.08] shadow-2xl relative overflow-hidden group hover:border-white/[0.15] transition-all">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+            <h3 className="text-lg font-black text-white mb-6 flex items-center gap-2 relative z-10">
+              <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
+            </h3>
+            <div className="relative z-10">
               <AwsResourceLogsAndEvents logs={logs} logsStatus={logsStatus} metrics={metrics} events={events} resource={resource} />
             </div>
           </div>
@@ -552,7 +562,7 @@ function AwsResourceLogsAndEvents({ logs, logsStatus, metrics, events, resource 
       {/* Metrics Snapshot */}
       <div className="space-y-3">
         <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-white/10 pb-2">Metrics Snapshot</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
           {metrics && metrics.length > 0 ? (
             metrics.slice(0, 6).map((m, i) => (
               <div key={i} className="bg-[#0a0f1d] p-3 rounded-xl border border-white/10 text-center min-w-0 overflow-hidden shadow-inner">

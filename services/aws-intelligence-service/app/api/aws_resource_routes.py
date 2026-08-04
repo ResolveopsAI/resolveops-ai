@@ -11,8 +11,32 @@ from app.services.aws_runtime_service import AWSRuntimeService
 
 router = APIRouter(prefix="/api/v1/aws/resources", tags=["AWS Resources"])
 
-# In-memory mock for now since we asked the user about DB choices
+# In-memory cache backed by a JSON file for persistence across container restarts
+import os
+import json
+
+CACHE_FILE = "/app/data/aws_cache.json"
 _db_cache = {}
+
+def _load_cache():
+    global _db_cache
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                _db_cache = json.load(f)
+        except Exception as e:
+            print(f"Failed to load cache: {e}")
+            _db_cache = {}
+
+def _save_cache():
+    try:
+        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+        with open(CACHE_FILE, "w") as f:
+            json.dump(_db_cache, f)
+    except Exception as e:
+        print(f"Failed to save cache: {e}")
+
+_load_cache()
 
 class SyncRequest(BaseModel):
     auth_method: str = "environment"
@@ -72,6 +96,7 @@ def sync_resources(
             _db_cache[x_tenant_email] = {}
         _db_cache[x_tenant_email]["resources"] = resources
         _db_cache[x_tenant_email]["last_synced_at"] = __import__('datetime').datetime.utcnow().isoformat() + "Z"
+        _save_cache()
         
         ec2_instances = [r for r in resources if "EC2" in r.get("resource_type", "")]
         ec2 = len(ec2_instances)
