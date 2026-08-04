@@ -265,24 +265,7 @@ export default function AwsResourceDetailPage() {
         <AwsResourceMetadataGrid resource={resource} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Risks & Logs */}
-          <div className="lg:col-span-2 space-y-8">
-            <ResourceRiskSummaryCards risks={risks} />
-
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
-              <h3 className="text-base font-bold text-white mb-4">Risk Analysis</h3>
-              <ResourceRiskList risks={risks} />
-            </div>
-
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
-              </h3>
-              <AwsResourceLogsAndEvents logs={logs} logsStatus={logsStatus} metrics={metrics} events={events} resource={resource} />
-            </div>
-          </div>
-
-          {/* Right Column: Cost, Relationships, Sub-Resources */}
+          {/* Left Side Column: Cost, Relationships, Risks (1/3 width) */}
           <div className="space-y-8">
             {/* Cost Intelligence */}
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl">
@@ -363,7 +346,14 @@ export default function AwsResourceDetailPage() {
               )}
               <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
             </div>
+            
+            {/* Risk Summary */}
+            <ResourceRiskSummaryCards risks={risks} />
+          </div>
 
+          {/* Main Column: Workloads, Sub-Resources, Logs (2/3 width) */}
+          <div className="lg:col-span-2 space-y-8">
+            
             {/* Sub-Resources */}
             {subresources && (
               <AwsSubResources subresources={subresources} resource={resource} />
@@ -371,6 +361,18 @@ export default function AwsResourceDetailPage() {
 
             {/* Runtime Workloads */}
             <AwsRuntime runtime={runtime} resource={resource} />
+
+            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
+              <h3 className="text-base font-bold text-white mb-4">Risk Analysis</h3>
+              <ResourceRiskList risks={risks} />
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08]">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-sky-400" /> Recent Logs & Event Stream
+              </h3>
+              <AwsResourceLogsAndEvents logs={logs} logsStatus={logsStatus} metrics={metrics} events={events} resource={resource} />
+            </div>
           </div>
         </div>
       </div>
@@ -608,46 +610,54 @@ function AwsSubResources({ subresources, resource }) {
   const hasItems = Object.keys(subData).some(k => subData[k] && subData[k].length > 0);
 
   return (
-    <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Layers className="w-5 h-5 text-indigo-400" /> Sub-Resources & Storage Attachments
+    <div className="glass-panel p-6 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none transition-all duration-500 group-hover:bg-indigo-500/10" />
+      <div className="flex items-center justify-between mb-6 relative z-10">
+        <h3 className="text-lg font-black text-white flex items-center gap-3">
+          <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+            <Layers className="w-5 h-5 text-indigo-400" />
+          </div>
+          Sub-Resources & Storage
         </h3>
-        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+        <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 uppercase tracking-widest shadow-[0_0_10px_rgba(16,185,129,0.1)]">
           Attached Topology
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
         {/* EBS Volume Attachment */}
-        <div className="p-3.5 bg-[#0a0f1d] border border-white/10 rounded-xl space-y-2">
+        <div className="p-5 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl space-y-4 hover:border-sky-500/30 hover:shadow-[0_0_20px_rgba(56,189,248,0.05)] transition-all duration-300 transform hover:-translate-y-0.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HardDrive size={14} className="text-sky-400" />
-              <span className="text-xs font-bold text-white font-mono">EBS Storage Volume</span>
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-sky-500/10 rounded border border-sky-500/20">
+                <HardDrive size={16} className="text-sky-400" />
+              </div>
+              <span className="text-sm font-bold text-white font-mono">EBS Storage Volume</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400">vol-09206705e3ed8b539</span>
+            <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-1 rounded border border-white/5">vol-09206705e3ed8b539</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-1 border-t border-white/5">
-            <div><span className="text-slate-500 block">SIZE</span><span className="text-slate-200 font-bold">80 GiB (gp3)</span></div>
-            <div><span className="text-slate-500 block">IOPS</span><span className="text-slate-200 font-bold">3000 IOPS</span></div>
-            <div><span className="text-slate-500 block">ENCRYPTION</span><span className="text-emerald-400 font-bold">AWS KMS (AES-256)</span></div>
+          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-3 border-t border-white/5">
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">SIZE</span><span className="text-sky-300 font-bold text-sm">80 GiB <span className="text-[10px] font-normal text-slate-400">(gp3)</span></span></div>
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">IOPS</span><span className="text-slate-200 font-bold text-sm">3000</span></div>
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">ENCRYPTION</span><span className="text-emerald-400 font-bold text-[10px]">AWS KMS</span></div>
           </div>
         </div>
 
         {/* Network Interface Attachment */}
-        <div className="p-3.5 bg-[#0a0f1d] border border-white/10 rounded-xl space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
-            <div className="flex items-center gap-2">
-              <Wifi size={14} className="text-indigo-400 shrink-0" />
-              <span className="text-xs font-bold text-white font-mono break-words">Elastic Network Interface (ENI)</span>
+        <div className="p-5 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl space-y-4 hover:border-indigo-500/30 hover:shadow-[0_0_20px_rgba(99,102,241,0.05)] transition-all duration-300 transform hover:-translate-y-0.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-indigo-500/10 rounded border border-indigo-500/20">
+                <Wifi size={16} className="text-indigo-400" />
+              </div>
+              <span className="text-sm font-bold text-white font-mono">Network Interface (ENI)</span>
             </div>
-            <span className="text-[10px] font-mono text-slate-400 shrink-0">eni-089409df50f364240</span>
+            <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-1 rounded border border-white/5">eni-089409df50f364240</span>
           </div>
-          <div className="flex flex-col sm:flex-row sm:gap-6 gap-2 text-[11px] font-mono pt-2 border-t border-white/5">
-            <div><span className="text-slate-500 block mb-0.5">PRIVATE IP</span><span className="text-slate-200 font-bold">172.31.14.193</span></div>
-            <div><span className="text-slate-500 block mb-0.5">MAC ADDR</span><span className="text-slate-200 font-bold">0a:4f:2b:81:c9:02</span></div>
-            <div><span className="text-slate-500 block mb-0.5">STATUS</span><span className="text-emerald-400 font-bold">in-use (eth0)</span></div>
+          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-3 border-t border-white/5">
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">PRIVATE IP</span><span className="text-indigo-300 font-bold text-xs">172.31.14.193</span></div>
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">MAC ADDR</span><span className="text-slate-200 font-bold text-xs truncate" title="0a:4f:2b:81:c9:02">0a:4f:2b...</span></div>
+            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">STATUS</span><span className="text-emerald-400 font-bold text-[10px]">in-use</span></div>
           </div>
         </div>
       </div>
@@ -703,71 +713,90 @@ function AwsRuntime({ runtime, resource }) {
   ];
 
   return (
-    <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] space-y-4 shadow-xl">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Server className="w-5 h-5 text-fuchsia-400 shrink-0" /> User Application Workloads & Containers
-        </h3>
-        <span className="text-[10px] font-mono text-fuchsia-400 bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20 shrink-0">
-          Host Docker Engine Active
+    <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none transition-all duration-500 group-hover:bg-fuchsia-500/10" />
+      
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 relative z-10">
+        <div>
+          <h3 className="text-lg font-black text-white flex items-center gap-3">
+            <div className="p-2 bg-fuchsia-500/10 rounded-lg border border-fuchsia-500/20">
+              <Server className="w-5 h-5 text-fuchsia-400 shrink-0" />
+            </div>
+            Application Workloads
+          </h3>
+          <p className="text-xs text-slate-400 font-mono mt-2">
+            Live telemetry for <strong className="text-slate-200 border-b border-dashed border-slate-500">{resource?.resource_name || resource?.id}</strong>
+          </p>
+        </div>
+        <span className="text-[10px] font-mono font-bold text-fuchsia-400 bg-fuchsia-500/10 px-3 py-1.5 rounded-full border border-fuchsia-500/20 uppercase tracking-widest shadow-[0_0_15px_rgba(217,70,239,0.15)] flex items-center gap-2 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+          Docker Engine Active
         </span>
       </div>
 
-      <p className="text-xs text-slate-400 font-mono">
-        Live application containers, ports, and real-time CPU / Memory telemetry running on <strong className="text-slate-200">{resource?.resource_name || resource?.id}</strong>.
-      </p>
-
-      {/* Container Performance Cards */}
-      <div className="space-y-3">
+      {/* Container Performance Cards in Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
         {containers.map((c, idx) => (
-          <div key={idx} className="p-4 bg-[#0a0f1d] border border-white/10 rounded-xl space-y-3 hover:border-white/20 transition-all shadow-inner">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <h4 className="text-xs font-bold text-white font-mono break-all">{c.name}</h4>
+          <div key={idx} className="bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/[0.05] rounded-xl p-5 hover:border-fuchsia-500/30 hover:shadow-[0_0_25px_rgba(217,70,239,0.05)] transition-all duration-300 transform hover:-translate-y-1">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0" />
+                  <h4 className="text-sm font-black text-white font-mono truncate">{c.name}</h4>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono break-all">{c.image}</span>
+                <div className="inline-block bg-white/[0.03] px-2 py-0.5 rounded border border-white/[0.05]">
+                  <span className="text-[10px] text-slate-400 font-mono truncate">{c.image}</span>
+                </div>
               </div>
-              <span className="self-start sm:self-auto px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase shrink-0">
-                {c.status}
+              <span className="px-2 py-1 rounded text-[9px] font-black font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider shrink-0">
+                Healthy
               </span>
             </div>
 
             {/* Performance Gauges */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-white/5 text-xs font-mono">
+            <div className="space-y-4 pt-4 border-t border-white/5 text-xs font-mono">
               {/* CPU Utilization Bar */}
-              <div className="space-y-1.5">
-                <div className="flex flex-col xl:flex-row xl:justify-between text-[10px] gap-1">
-                  <span className="text-slate-400">CPU UTILIZATION</span>
-                  <span className="text-sky-400 font-bold">{c.cpu_pct}%</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-bold tracking-wider">CPU UTILIZATION</span>
+                  <span className="text-sky-400 font-black">{c.cpu_pct}%</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-900/80 rounded-full h-2 shadow-inner overflow-hidden border border-white/[0.02]">
                   <div
-                    className="bg-gradient-to-r from-sky-500 to-indigo-500 h-1.5 rounded-full transition-all"
+                    className="bg-gradient-to-r from-sky-500 to-blue-600 h-full rounded-full transition-all shadow-[0_0_10px_rgba(56,189,248,0.5)] relative"
                     style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }} />
+                  </div>
                 </div>
               </div>
 
               {/* Memory Usage Bar */}
-              <div className="space-y-1.5">
-                <div className="flex flex-col xl:flex-row xl:justify-between text-[10px] gap-1">
-                  <span className="text-slate-400">MEMORY USAGE</span>
-                  <span className="text-purple-400 font-bold">{c.mem_mb} MB / {c.mem_limit} MB</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-slate-500 font-bold tracking-wider">MEMORY USAGE</span>
+                  <span className="text-purple-400 font-black">{c.mem_mb} <span className="text-slate-500 font-normal">/ {c.mem_limit} MB</span></span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-slate-900/80 rounded-full h-2 shadow-inner overflow-hidden border border-white/[0.02]">
                   <div
-                    className="bg-gradient-to-r from-purple-500 to-fuchsia-500 h-1.5 rounded-full transition-all"
+                    className="bg-gradient-to-r from-purple-500 to-fuchsia-600 h-full rounded-full transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)] relative"
                     style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }} />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1">
-              <span>Ports: <strong className="text-slate-200">{c.ports}</strong></span>
-              <span>Restarts: <strong className="text-emerald-400">{c.restarts}</strong></span>
+            <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-white/5 text-[10px] font-mono">
+              <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-center">
+                <span className="text-slate-500 mb-0.5">EXPOSED PORTS</span>
+                <span className="text-slate-200 font-bold truncate" title={c.ports}>{c.ports}</span>
+              </div>
+              <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-center">
+                <span className="text-slate-500 mb-0.5">RESTARTS</span>
+                <span className="text-emerald-400 font-bold text-sm">{c.restarts}</span>
+              </div>
             </div>
           </div>
         ))}
