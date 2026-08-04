@@ -1912,6 +1912,11 @@ def get_integrations(current_user: dict = Depends(get_current_user)):
         for k in list(status_map.keys()):
             if k == "github_details": continue
             if k in integrations and integrations[k].get("connected"):
+                # Special check for Azure: require actual credentials
+                if k == "azure":
+                    azure_creds = integrations[k].get("credentials", {})
+                    if not (azure_creds.get("client_id") and azure_creds.get("client_secret")):
+                        continue
                 status_map[k] = True
                 if k == "github":
                     status_map["github_details"] = integrations[k].get("credentials", {}).get("github_username")
@@ -2176,7 +2181,7 @@ class CloudSelectRequest(BaseModel):
 
 @app.get("/api/v1/cloud/resources")
 def get_cloud_resources(current_user: dict = Depends(get_current_user)):
-    """Mocks fetching available cloud resources from connected AWS/Azure accounts."""
+    """Fetches available cloud resources from connected AWS/Azure accounts."""
     try:
         tenant_email = current_user.get("email")
         integrations = get_user_integrations(tenant_email)
@@ -2184,16 +2189,37 @@ def get_cloud_resources(current_user: dict = Depends(get_current_user)):
         resources = []
         selected_ids = integrations.get("cloud_selections", [])
         
-        if integrations.get("aws", {}).get("connected"):
-            resources.extend([
-                {"id": "aws-ec2-i-0abc1234567890def", "name": "production-api-server", "type": "EC2 Instance", "provider": "AWS", "region": "us-east-1", "status": "running"},
-                {"id": "aws-ec2-i-0987654321fedcba0", "name": "worker-node-1", "type": "EC2 Instance", "provider": "AWS", "region": "us-east-1", "status": "running"},
-                {"id": "aws-eks-prod-cluster", "name": "eks-prod-cluster", "type": "EKS Cluster", "provider": "AWS", "region": "us-east-1", "status": "active"},
-                {"id": "aws-s3-prod-assets", "name": "prod-static-assets", "type": "S3 Bucket", "provider": "AWS", "region": "us-east-1", "status": "active"}
-            ])
+        aws_connected = integrations.get("aws", {}).get("connected")
+        if aws_connected:
+            try:
+                import requests
+                # Use EC2 role credentials if on EC2, or pass explicit keys if stored
+                req_body = {"auth_method": "environment", "regions": ["us-east-1"]}
+                aws_creds = integrations.get("aws", {}).get("credentials", {})
+                if aws_creds.get("access_key_id"):
+                    req_body = {
+                        "auth_method": "access_keys",
+                        "access_key_id": aws_creds.get("access_key_id"),
+                        "secret_access_key": aws_creds.get("secret_access_key"),
+                        "regions": [aws_creds.get("region", "us-east-1")]
+                    }
+                
+                aws_service_url = os.getenv("AWS_INTELLIGENCE_SERVICE_URL", "http://aws-intelligence-service:8000")
+                resp = requests.post(
+                    f"{aws_service_url}/api/v1/aws/resources/sync", 
+                    json=req_body,
+                    headers={"x-tenant-email": tenant_email},
+                    timeout=10
+                )
+                if resp.status_code == 200:
+                    resources.extend(resp.json().get("resources", []))
+            except Exception as e:
+                print(f"[WARN] Failed to fetch live AWS resources: {e}")
             
-        if integrations.get("azure", {}).get("connected"):
-            azure_creds = integrations["azure"].get("credentials", {})
+        azure_creds = integrations.get("azure", {}).get("credentials", {})
+        azure_connected = integrations.get("azure", {}).get("connected")
+        
+        if azure_connected and azure_creds.get("client_id"):
             client_id = azure_creds.get("client_id")
             client_secret = azure_creds.get("client_secret")
             azure_tenant = azure_creds.get("tenant_id")
@@ -2215,7 +2241,6 @@ def get_cloud_resources(current_user: dict = Depends(get_current_user)):
                     
                     for sub in subs:
                         resource_client = ResourceManagementClient(credential, sub.subscription_id)
-                        # Fetch all standard resources
                         import re
                         all_resources = resource_client.resources.list()
                         for r in all_resources:
@@ -2232,7 +2257,6 @@ def get_cloud_resources(current_user: dict = Depends(get_current_user)):
                                 "resource_group": rg_name
                             })
                             
-                        # Also fetch resource groups since they act as containers and might be empty
                         resource_groups = resource_client.resource_groups.list()
                         for rg in resource_groups:
                             resources.append({
@@ -2247,7 +2271,6 @@ def get_cloud_resources(current_user: dict = Depends(get_current_user)):
                             })
                 except Exception as e:
                     print(f"Error fetching Azure resources: {e}")
-                    # Fallback or just ignore so it doesn't break AWS or other integrations
             
         for r in resources:
             r["selected"] = r["id"] in selected_ids
@@ -2279,25 +2302,29 @@ def get_cloud_logs(current_user: dict = Depends(get_current_user)):
         if not selected_ids:
             return []
             
-        # Mock recent logs for the selected resources
-        import random
-        from datetime import datetime, timedelta
-        
         logs = []
-        now = datetime.utcnow()
-        for idx in range(20):
-            res_id = random.choice(selected_ids)
-            level = random.choices(["INFO", "WARNING", "ERROR"], weights=[80, 15, 5])[0]
-            msg = f"Routine operational trace" if level == "INFO" else f"Memory threshold warning" if level == "WARNING" else f"Connection timed out"
-            logs.append({
-                "resource_id": res_id,
-                "timestamp": (now - timedelta(minutes=random.randint(1, 60))).isoformat() + "Z",
-                "level": level,
-                "message": f"{msg} for {res_id}"
-            })
-            
-        logs.sort(key=lambda x: x["timestamp"], reverse=True)
-        return logs
+        import requests
+        aws_service_url = os.getenv("AWS_INTELLIGENCE_SERVICE_URL", "http://aws-intelligence-service:8000")
+        
+        # Only fetch logs for the first 3 selected resources to avoid huge latencies in the overview
+        for res_id in selected_ids[:3]:
+            if str(res_id).startswith("aws-"):
+                try:
+                    resp = requests.get(
+                        f"{aws_service_url}/api/v1/aws/resources/{res_id}/logs",
+                        headers={"x-tenant-email": tenant_email},
+                        timeout=5
+                    )
+                    if resp.status_code == 200:
+                        resource_logs = resp.json().get("logs", [])
+                        for log in resource_logs:
+                            log["resource_id"] = res_id
+                        logs.extend(resource_logs)
+                except Exception as e:
+                    print(f"Failed to fetch logs for {res_id}: {e}")
+                    
+        logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        return logs[:50]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
