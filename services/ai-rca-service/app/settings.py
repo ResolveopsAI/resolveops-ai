@@ -19,7 +19,7 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
     # ── AI Provider ──────────────────────────────────────────────────────────
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "bedrock").lower()
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai").lower()
     BEDROCK_MODEL_ID: str = os.getenv(
         "BEDROCK_MODEL_ID",
         "anthropic.claude-3-haiku-20240307-v1:0",

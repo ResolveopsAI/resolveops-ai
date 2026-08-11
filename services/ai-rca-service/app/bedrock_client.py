@@ -234,7 +234,7 @@ class BedrockClient:
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return text
+        return response.choices[0].message.content or ""
 
     def converse_with_tools(
         self,
@@ -561,10 +561,10 @@ class BedrockClient:
                 )
                 return {"status": "available", "provider": "bedrock"}
             else:
-                # For non-Bedrock, skip live probe — just confirm config
-                if settings.OPENAI_API_KEY:
+                # For non-Bedrock, skip live probe — just confirm config is present
+                if settings.OPENAI_MODEL:
                     return {"status": "available", "provider": "openai"}
-                return {"status": "misconfigured", "provider": "openai"}
+                return {"status": "misconfigured", "provider": "openai", "reason": "OPENAI_MODEL not set"}
         except Exception as exc:
             code = classify_provider_exception(exc)
             return {"status": "unavailable", "provider": settings.AI_PROVIDER, "error_code": code}
