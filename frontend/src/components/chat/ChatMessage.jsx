@@ -596,7 +596,7 @@ function ErrorCard({ error, onRetry }) {
         <AlertTriangle size={15} className="text-rose-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-sm font-semibold text-rose-300 mb-0.5">AI Analysis Unavailable</p>
-          <p className="text-xs text-rose-300/80 leading-relaxed">{error?.message}</p>
+          <p className="text-xs text-rose-300/80 leading-relaxed break-all">{error?.message}</p>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
