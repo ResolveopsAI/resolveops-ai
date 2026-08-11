@@ -78,6 +78,7 @@ services:
       - VISUAL_STORAGE_DIR=/app/data/visuals
       - SSH_CREDENTIAL_SERVICE_URL=http://ssh-credential-service:8000
       - OPENAI_BASE_URL=http://ollama:11434/v1
+      - AI_PROVIDER=openai
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
