@@ -35,6 +35,7 @@ class Settings:
         os.getenv("OPENAI_FALLBACK_ENABLED", "false").lower() == "true"
     )
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY") or None
+    OPENAI_BASE_URL: Optional[str] = os.getenv("OPENAI_BASE_URL") or None
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", os.getenv("OPENAI_MODEL_NAME", ""))
 
     # ── Feature Flags ────────────────────────────────────────────────────────

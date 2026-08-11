@@ -18,6 +18,7 @@ class PredictiveEngine:
             self.chat_model = ChatOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini"),
+                base_url=os.getenv("OPENAI_BASE_URL"),
                 temperature=0.1
             )
         else:
