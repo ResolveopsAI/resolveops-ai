@@ -56,9 +56,11 @@ class BedrockClient:
         """Only constructed when OPENAI_FALLBACK_ENABLED=true and key is present."""
         if self._openai_client is None:
             from openai import OpenAI  # type: ignore
+            import httpx
             self._openai_client = OpenAI(
                 api_key=settings.OPENAI_API_KEY,
-                base_url=settings.OPENAI_BASE_URL
+                base_url=settings.OPENAI_BASE_URL,
+                http_client=httpx.Client(proxies=None)
             )
         return self._openai_client
 

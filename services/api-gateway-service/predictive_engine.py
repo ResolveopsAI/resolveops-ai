@@ -15,11 +15,13 @@ class PredictiveEngine:
         ai_provider = os.getenv("AI_PROVIDER", "bedrock").lower()
         if ai_provider == "openai":
             from langchain_openai import ChatOpenAI
+            import httpx
             self.chat_model = ChatOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY"),
                 model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini"),
                 base_url=os.getenv("OPENAI_BASE_URL"),
-                temperature=0.1
+                temperature=0.1,
+                http_client=httpx.Client(proxies=None)
             )
         else:
             aws_region = os.getenv("AWS_REGION", "us-east-1")
