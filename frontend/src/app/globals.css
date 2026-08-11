@@ -125,6 +125,15 @@
       0 1px 2px rgba(0,0,0,0.5),
       0 4px 16px rgba(0,0,0,0.3);
     backdrop-filter: blur(12px);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Glass panel focus/hover enhancement */
+  .glass-panel:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 
+      0 0 0 1px var(--accent-primary) inset,
+      0 0 20px rgba(56,189,248,0.15);
   }
 
   /* Accent glow panels */
@@ -205,31 +214,46 @@
     animation: shimmer 1.5s ease-in-out infinite;
   }
 
-  /* Status badge variants — plain CSS (Tailwind v4: no @apply with variants in @layer utilities) */
+  /* Status badge variants — plain CSS */
   .badge-success {
     background: rgba(16,185,129,0.10);
     color: #34d399;
     border: 1px solid rgba(16,185,129,0.25);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
   }
   .badge-danger {
     background: rgba(244,63,94,0.10);
     color: #fb7185;
     border: 1px solid rgba(244,63,94,0.25);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
   }
   .badge-warning {
     background: rgba(245,158,11,0.10);
     color: #fbbf24;
     border: 1px solid rgba(245,158,11,0.25);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
   }
   .badge-info {
     background: rgba(56,189,248,0.10);
     color: #38bdf8;
     border: 1px solid rgba(56,189,248,0.25);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
   }
   .badge-neutral {
     background: rgba(100,116,139,0.10);
     color: #94a3b8;
     border: 1px solid rgba(100,116,139,0.20);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
   }
 
   /* Gradient text */
@@ -265,6 +289,10 @@
   .btn-primary:hover {
     background: #38bdf8;
     box-shadow: 0 0 30px rgba(56,189,248,0.4);
+  }
+  .btn-primary:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
   }
   .btn-ghost {
     display: inline-flex;
@@ -306,6 +334,77 @@
   .btn-danger:hover {
     background: rgba(244,63,94,0.20);
     color: #fda4af;
+  }
+
+  /* Custom Scrollbar Utility */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  /* Form Input Utility */
+  .form-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    transition: all 150ms ease;
+  }
+  .form-input::placeholder {
+    color: var(--text-muted);
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  /* Spinner Utility */
+  .spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid rgba(56, 189, 248, 0.1);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* Card Hover Lift */
+  .card-hover-lift {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    border-color: rgba(56,189,248,0.25);
+  }
+
+  /* Page section header utility */
+  .page-section-header {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Section Divider Utility */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-default) 50%, transparent);
   }
 }
 

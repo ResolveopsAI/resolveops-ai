@@ -236,18 +236,22 @@ function MetricCard({ title, value, icon, color, alert = false, pulse = false })
   const c = colorStyles[color] || colorStyles.sky;
 
   return (
-    <div className={`glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all hover:scale-[1.02] ${alert ? "border-rose-500/25" : ""}`}
-      style={alert ? { boxShadow: "0 0 20px rgba(244,63,94,0.08)" } : {}}>
+    <div 
+      role="region" 
+      aria-label={`${title}: ${value}`}
+      className={`glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all hover:scale-[1.02] ${alert ? "border-rose-500/25" : ""}`}
+      style={alert ? { boxShadow: "0 0 20px rgba(244,63,94,0.08)" } : {}}
+    >
       <div className="flex justify-between items-start mb-3">
         <div className="p-2 rounded-lg" style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}>
           {icon}
         </div>
-        {pulse && <div className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" style={{ color: "#10b981" }} />}
-        {alert && <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />}
+        {pulse && <div className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" style={{ color: "#10b981" }} aria-label="Pulse active indicator" />}
+        {alert && <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" aria-label="Warning alert active" />}
       </div>
       <div>
         <p className="text-2xl font-black text-white tracking-tight mb-0.5">{value}</p>
-        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
       </div>
     </div>
   );
@@ -262,10 +266,10 @@ function PlatformCard({ title, desc, icon, color, isConnected, stats, href }) {
   const c = colorStyles[color] || colorStyles.sky;
 
   return (
-    <div className="glass-panel rounded-2xl p-5 flex flex-col relative overflow-hidden group transition-all duration-200 hover:scale-[1.01]"
+    <div 
+      className="glass-panel rounded-2xl p-5 flex flex-col relative overflow-hidden group transition-all duration-200 hover:scale-[1.01] hover:border-[var(--hover-border)]"
       style={{ "--hover-border": c.hoverBorder }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = c.hoverBorder}
-      onMouseLeave={e => e.currentTarget.style.borderColor = ""}>
+    >
       <div className="absolute top-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity"
         style={{ background: `linear-gradient(90deg, transparent, ${c.text}40, transparent)` }} />
 
@@ -274,12 +278,12 @@ function PlatformCard({ title, desc, icon, color, isConnected, stats, href }) {
           {icon}
         </div>
         {isConnected
-          ? <span className="badge-success px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">Connected</span>
-          : <span className="badge-neutral px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">Not configured</span>}
+          ? <span className="badge-success text-xs font-bold uppercase tracking-wider">Connected</span>
+          : <span className="badge-neutral text-xs font-bold uppercase tracking-wider">Not configured</span>}
       </div>
 
       <h3 className="text-base font-bold text-white mb-1">{title}</h3>
-      <p className="text-[11px] text-slate-400 mb-5 flex-1 leading-relaxed">{desc}</p>
+      <p className="text-xs text-slate-400 mb-5 flex-1 leading-relaxed">{desc}</p>
 
       {isConnected ? (
         <div className="space-y-3">
@@ -322,7 +326,7 @@ function RecommendRow({ type, title, desc }) {
       </div>
       <div>
         <h4 className="text-xs font-semibold text-slate-200 mb-0.5">{title}</h4>
-        <p className="text-[11px] text-slate-500 leading-relaxed">{desc}</p>
+        <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
       </div>
     </div>
   );
@@ -331,7 +335,7 @@ function RecommendRow({ type, title, desc }) {
 function CostMetricCard({ costData }) {
   if (!costData?.subscription_cost) {
     return (
-      <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+      <div role="region" aria-label="Cloud Cost MTD: $0.00" className="glass-panel rounded-2xl p-5 flex flex-col justify-between">
         <div className="mb-3">
           <div className="p-2 rounded-lg w-fit bg-slate-500/10 border border-slate-500/20 text-slate-400">
             <DollarSign size={16} />
@@ -339,7 +343,7 @@ function CostMetricCard({ costData }) {
         </div>
         <div>
           <p className="text-2xl font-black text-white tracking-tight mb-0.5">$0.00</p>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Cloud Cost MTD</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cloud Cost MTD</p>
         </div>
       </div>
     );
@@ -347,15 +351,19 @@ function CostMetricCard({ costData }) {
   const sub = costData.subscription_cost;
   const isPermReq = sub.status === "permission_required";
   return (
-    <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
-      style={{ border: "1px solid rgba(56,189,248,0.15)", boxShadow: "0 0 20px rgba(56,189,248,0.05)" }}>
+    <div 
+      role="region" 
+      aria-label={`Cloud Cost MTD: ${isPermReq ? "Unavailable" : sub.month_to_date_actual}`}
+      className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
+      style={{ border: "1px solid rgba(56,189,248,0.15)", boxShadow: "0 0 20px rgba(56,189,248,0.05)" }}
+    >
       <div className="flex justify-between items-start mb-3">
         <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
           <DollarSign size={16} />
         </div>
         {isPermReq
-          ? <span className="badge-danger px-2 py-0.5 rounded text-[9px] font-bold">N/A</span>
-          : <span className="badge-success px-2 py-0.5 rounded text-[9px] font-bold">Live</span>}
+          ? <span className="badge-danger text-xs font-bold">N/A</span>
+          : <span className="badge-success text-xs font-bold">Live</span>}
       </div>
       <div>
         {isPermReq
@@ -363,7 +371,7 @@ function CostMetricCard({ costData }) {
           : <p className="text-2xl font-black text-white tracking-tight mb-0.5">
               {sub.currency_symbol}{sub.month_to_date_actual?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>}
-        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Cloud Cost MTD</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cloud Cost MTD</p>
       </div>
     </div>
   );

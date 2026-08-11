@@ -34,34 +34,35 @@ export default function ChatWelcomeState({ fullName, onSelectPrompt }) {
 
   return (
     <div className="flex flex-col items-center justify-center text-center py-12 px-4 max-w-2xl mx-auto space-y-6 animate-in fade-in duration-300">
-      <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-900/30">
-        <Sparkles size={22} className="text-indigo-400" />
+      <div className="w-12 h-12 rounded-2xl bg-sky-600/20 border border-sky-500/30 flex items-center justify-center shadow-lg shadow-sky-950/30">
+        <Sparkles size={22} className="text-sky-400" />
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">
+        <h1 className="text-xl font-bold text-white tracking-tight">
           {firstName ? `Welcome, ${firstName}!` : "Welcome to ResolveOps AI-RCA"}
-        </h2>
-        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+        </h1>
+        <p className="text-xs text-slate-400 mt-1.5 max-w-md mx-auto leading-relaxed">
           Evidence-first incident investigation agent. I correlate AWS CloudWatch, CloudTrail, Docker services, and GitHub pipeline telemetry.
         </p>
       </div>
 
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
         {PROMPT_CHIPS.map((chip, idx) => {
           const Icon = chip.icon;
           return (
             <button
               key={idx}
               onClick={() => onSelectPrompt(chip.prompt)}
-              className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer group ${chip.color}`}
+              aria-label={`Try sample query: ${chip.title}`}
+              className={`p-4 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer group min-h-[96px] ${chip.color} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50`}
             >
               <div className="flex items-center gap-2 mb-2">
-                <Icon size={15} />
+                <Icon size={16} />
                 <span className="text-xs font-semibold">{chip.title}</span>
               </div>
-              <p className="text-[11px] text-slate-400 group-hover:text-slate-200 line-clamp-2 leading-relaxed">
-                "{chip.prompt}"
+              <p className="text-xs text-slate-400 group-hover:text-slate-200 line-clamp-2 leading-relaxed">
+                &ldquo;{chip.prompt}&rdquo;
               </p>
             </button>
           );

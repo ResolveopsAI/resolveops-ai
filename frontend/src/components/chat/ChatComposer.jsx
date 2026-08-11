@@ -52,21 +52,21 @@ export default function ChatComposer({
   };
 
   return (
-    <div className="shrink-0 px-4 sm:px-6 py-4 border-t border-white/5 bg-[#080812]/80 backdrop-blur-md">
+    <div className="shrink-0 px-4 sm:px-6 py-4 border-t border-white/5 bg-[var(--bg-base)]/80 backdrop-blur-md">
       <div className="max-w-7xl w-full mx-auto space-y-2">
         {imageFile && (
           <div className="relative w-14 h-14 border border-indigo-500/50 rounded-xl overflow-hidden group bg-slate-900 flex items-center justify-center">
             <img src={imageFile} alt="Preview" className="object-cover w-full h-full" />
             <button
               onClick={() => setImageFile(null)}
-              className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-rose-400 text-[10px] font-bold transition-opacity cursor-pointer"
+              className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-rose-400 text-xs font-bold transition-opacity cursor-pointer"
             >
               Remove
             </button>
           </div>
         )}
 
-        <div className="relative flex items-center bg-[#0a0a12] border border-white/10 rounded-xl px-4 py-2.5 focus-within:border-indigo-500/50 transition-all duration-200 gap-3 shadow-inner">
+        <div className="relative flex items-center bg-[var(--bg-elevated)] border border-white/10 rounded-xl px-4 py-2.5 focus-within:border-[var(--accent-primary)] focus-within:ring-2 focus-within:ring-[var(--accent-glow)] transition-all duration-200 gap-3 shadow-inner">
           <label
             className="cursor-pointer text-slate-500 hover:text-slate-300 transition-colors shrink-0"
             title="Attach log or diagram"
@@ -115,15 +115,16 @@ export default function ChatComposer({
             onClick={handleSubmit}
             disabled={disabled || isRecording || voiceSending || (!input.trim() && !imageFile)}
             aria-label="Send message"
-            className="shrink-0 w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 shadow-md shadow-indigo-900/40 cursor-pointer"
+            className="shrink-0 w-9 h-9 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 shadow-md shadow-sky-900/30 cursor-pointer"
           >
-            <Send size={14} className="text-white" />
+            <Send size={15} className="text-white" />
           </button>
         </div>
 
-        <p className="text-[10px] text-slate-600 text-center">
-          Secrets automatically redacted · Live evidence collected via MCP
-        </p>
+        <div className="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 px-1 gap-1">
+          <span>Press Enter to send, Shift+Enter for new line</span>
+          <span>Secrets automatically redacted · Live evidence collected via MCP</span>
+        </div>
       </div>
     </div>
   );
