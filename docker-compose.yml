@@ -77,6 +77,9 @@ services:
     environment:
       - VISUAL_STORAGE_DIR=/app/data/visuals
       - SSH_CREDENTIAL_SERVICE_URL=http://ssh-credential-service:8000
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - NO_PROXY=172.17.0.1,localhost,127.0.0.1,host.docker.internal
+      - no_proxy=172.17.0.1,localhost,127.0.0.1,host.docker.internal
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
@@ -198,6 +201,9 @@ services:
     environment:
       - VISUAL_STORAGE_DIR=/app/data/visuals
       - OPENAI_MODEL=${OPENAI_MODEL_NAME:-gpt-4o-mini}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - NO_PROXY=172.17.0.1,localhost,127.0.0.1,host.docker.internal
+      - no_proxy=172.17.0.1,localhost,127.0.0.1,host.docker.internal
     volumes:
       - generated_visuals:/app/data/visuals
     networks:
