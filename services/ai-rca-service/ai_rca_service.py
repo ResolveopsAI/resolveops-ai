@@ -1,10 +1,8 @@
 import os
 import re
 import time
-import boto3
 import logging
 from typing import List, Dict, Tuple, Optional
-from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -12,13 +10,29 @@ logger = logging.getLogger(__name__)
 
 class PredictiveEngine:
     def __init__(self):
-        aws_region = os.getenv("AWS_REGION", "us-east-1")
-        bedrock_client = boto3.client("bedrock-runtime", region_name=aws_region)
-        self.chat_model = ChatBedrock(
-            client=bedrock_client,
-            model_id=os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"),
-            model_kwargs={"temperature": 0.1}
-        )
+        ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+
+        if ai_provider == "openai":
+            # Ollama (or any OpenAI-compatible endpoint) running locally on the host / EC2
+            from langchain_openai import ChatOpenAI
+            self.chat_model = ChatOpenAI(
+                api_key=os.getenv("OPENAI_API_KEY", "ollama"),
+                base_url=os.getenv("OPENAI_BASE_URL", "http://ollama:11434/v1"),
+                model=os.getenv("OPENAI_MODEL_NAME", "llama3.1"),
+                temperature=0.1,
+                max_tokens=4096,
+            )
+        else:
+            # Bedrock fallback (only used when AI_PROVIDER=bedrock)
+            import boto3
+            from langchain_aws import ChatBedrock
+            aws_region = os.getenv("AWS_REGION", "us-east-1")
+            bedrock_client = boto3.client("bedrock-runtime", region_name=aws_region)
+            self.chat_model = ChatBedrock(
+                client=bedrock_client,
+                model_id=os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"),
+                model_kwargs={"temperature": 0.1},
+            )
 
     def analyze_logs_and_predict(self, logs: List[Dict]) -> Tuple[bool, Optional[Dict]]:
         """

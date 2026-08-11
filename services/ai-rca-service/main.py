@@ -68,7 +68,7 @@ class AnalyzeRequest(BaseModel):
 
 @app.post("/api/v1/rca/analyze")
 def analyze_rca(req: AnalyzeRequest):
-    ai_provider = os.getenv("AI_PROVIDER", "bedrock")
+    ai_provider = os.getenv("AI_PROVIDER", "openai")
     
     prompt = f"""
 You are an expert DevSecOps SRE Assistant.
