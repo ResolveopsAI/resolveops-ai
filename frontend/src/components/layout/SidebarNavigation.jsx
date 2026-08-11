@@ -82,6 +82,9 @@ export default function SidebarNavigation() {
 
   return (
     <aside
+      role="navigation"
+      aria-label="Main navigation"
+      aria-expanded={!isCollapsed}
       className={`sticky top-3 h-[calc(100vh-24px)] z-20 my-3 ml-3 mr-0 rounded-2xl shrink-0 flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${
         isCollapsed ? "w-[68px]" : "w-[230px]"
       }`}
@@ -100,7 +103,7 @@ export default function SidebarNavigation() {
         {!isCollapsed && (
           <div className="min-w-0 flex-1">
             <h1 className="font-bold text-[13px] tracking-tight leading-none text-white">ResolveOps AI</h1>
-            <p className="text-[9px] text-sky-400/80 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
+            <p className="text-[11px] text-sky-400/80 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
           </div>
         )}
         {!isCollapsed && (
@@ -108,8 +111,9 @@ export default function SidebarNavigation() {
             onClick={toggleCollapse}
             className="p-1.5 text-slate-500 hover:text-slate-200 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
             title="Collapse Sidebar"
+            aria-label="Collapse Sidebar"
           >
-            <PanelLeftClose size={15} />
+            <PanelLeftClose size={17} />
           </button>
         )}
       </div>
@@ -121,8 +125,9 @@ export default function SidebarNavigation() {
             onClick={toggleCollapse}
             className="w-full flex justify-center items-center py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-sky-400 rounded-lg border border-white/5 transition-colors cursor-pointer"
             title="Expand Sidebar"
+            aria-label="Expand Sidebar"
           >
-            <PanelLeftOpen size={15} />
+            <PanelLeftOpen size={17} />
           </button>
         </div>
       )}
@@ -137,7 +142,7 @@ export default function SidebarNavigation() {
           const isActive = pathname === item.path;
 
           return (
-            <Link key={item.name} href={item.path} title={isCollapsed ? item.name : undefined}>
+            <Link key={item.name} href={item.path} title={isCollapsed ? item.name : undefined} aria-current={isActive ? "page" : undefined}>
               <div
                 className={`w-full flex items-center rounded-xl transition-all duration-150 group cursor-pointer
                   ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
@@ -147,7 +152,7 @@ export default function SidebarNavigation() {
                   }`}
               >
                 <Icon
-                  size={16}
+                  size={17}
                   className={`shrink-0 transition-colors ${isActive ? "text-sky-400" : "text-slate-400 group-hover:text-slate-200"}`}
                 />
                 {!isCollapsed && (
@@ -172,13 +177,13 @@ export default function SidebarNavigation() {
         {!isCollapsed && (
           <div className="mx-2.5 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">System</span>
+              <span className="text-[11px] text-slate-500 uppercase tracking-widest font-bold">System</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] text-emerald-400 font-bold">ONLINE</span>
+                <span className="text-[11px] text-emerald-400 font-bold">ONLINE</span>
               </div>
             </div>
-            <p className="font-mono text-[10px] text-slate-400 tracking-wider">{systemTime} UTC+5:30</p>
+            <p className="font-mono text-xs text-slate-400 tracking-wider">{systemTime} UTC+5:30</p>
           </div>
         )}
       </div>

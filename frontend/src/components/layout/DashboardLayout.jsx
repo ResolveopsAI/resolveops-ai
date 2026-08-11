@@ -38,6 +38,11 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden text-slate-200" style={{ background: "#06091a" }}>
+      {/* Keyboard Accessibility Skip Link */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-3 focus:bg-sky-600 focus:text-white focus:rounded-md focus:m-2">
+        Skip to main content
+      </a>
+
       {/* Sidebar Navigation (Sticky Viewport Locked) */}
       <SidebarNavigation />
 
@@ -45,11 +50,11 @@ export default function DashboardLayout({ children }) {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         
         {/* Top Header Bar (Fixed at top of page view) */}
-        <header className="sticky top-0 z-10 px-6 py-3.5 flex items-center justify-between border-b border-white/[0.06] bg-[#06091a]/80 backdrop-blur-xl shrink-0">
+        <header role="banner" className="sticky top-0 z-10 px-6 py-3.5 flex items-center justify-between border-b border-white/[0.06] bg-[#06091a]/80 backdrop-blur-xl shrink-0">
           
           {/* Left Breadcrumb & Page Info */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-1.5 text-sm text-slate-400 font-medium">
               <span>Platform</span>
               <ChevronRight size={12} className="text-slate-600" />
               <span className="text-sky-400 font-semibold">{getPageTitle(pathname)}</span>
@@ -75,6 +80,7 @@ export default function DashboardLayout({ children }) {
               onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-rose-500/15 border border-white/[0.08] hover:border-rose-500/30 text-slate-400 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer"
               title="Logout from session"
+              aria-label="Logout from session"
             >
               <LogOut size={13} className="text-rose-400" />
               <span>Logout</span>
@@ -84,7 +90,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Scrollable Page Body */}
-        <main className="flex-1 p-5 overflow-y-auto min-w-0">
+        <main id="main-content" role="main" className="flex-1 p-5 overflow-y-auto min-w-0">
           {children}
         </main>
       </div>

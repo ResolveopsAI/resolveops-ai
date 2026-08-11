@@ -9,6 +9,7 @@ langchain-openai
 langchain-community
 langchain-core
 langchain-aws
+langchain-groq
 openai>=1.0.0
 mcp>=1.2.0
 pyjwt[crypto]>=2.9.0

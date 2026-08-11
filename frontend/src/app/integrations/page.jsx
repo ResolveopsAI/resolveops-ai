@@ -349,9 +349,9 @@ export default function IntegrationsManager() {
 
         {/* GitHub Modal */}
         {activeModal === "github" && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="github-modal-title" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="glass-panel border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden relative shadow-2xl p-8 space-y-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <h3 id="github-modal-title" className="text-xl font-bold text-white flex items-center gap-3">
                 <GitBranch className="text-purple-400" size={24} /> Connect GitHub
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
@@ -359,29 +359,33 @@ export default function IntegrationsManager() {
               </p>
               <div className="space-y-5">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  <label htmlFor="github-email" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
                     GitHub Email
                   </label>
                   <input
+                    id="github-email"
                     type="email"
                     value={githubEmail}
                     onChange={(e) => setGithubEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all font-mono"
+                    autoComplete="email"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                  <label htmlFor="github-token" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
                     Personal Access Token (PAT)
                   </label>
                   <input
+                    id="github-token"
                     type="password"
                     value={githubToken}
                     onChange={(e) => setGithubToken(e.target.value)}
                     placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all font-mono"
+                    autoComplete="current-password"
+                    className="form-input font-mono"
                   />
-                  <p className="text-[10px] text-slate-500 leading-relaxed mt-3">
+                  <p className="text-xs text-slate-500 leading-relaxed mt-3">
                     <strong className="text-purple-400/80">Required Scopes:</strong> <code className="bg-purple-500/10 text-purple-400 px-1 py-0.5 rounded">repo</code>, <code className="bg-purple-500/10 text-purple-400 px-1 py-0.5 rounded">workflow</code>, and <code className="bg-purple-500/10 text-purple-400 px-1 py-0.5 rounded">user:email</code>.
                   </p>
                 </div>
@@ -389,7 +393,7 @@ export default function IntegrationsManager() {
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-800/80">
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors"
+                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -401,7 +405,7 @@ export default function IntegrationsManager() {
                     });
                   }}
                   disabled={!githubEmail || !githubToken}
-                  className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
+                  className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20 cursor-pointer"
                 >
                   Authenticate
                 </button>
@@ -412,9 +416,9 @@ export default function IntegrationsManager() {
 
         {/* AWS Modal */}
         {activeModal === "aws" && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="aws-modal-title" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="glass-panel border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden relative shadow-2xl p-8 space-y-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <h3 id="aws-modal-title" className="text-xl font-bold text-white flex items-center gap-3">
                 <Key className="text-amber-400" size={24} /> Connect AWS
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
@@ -422,44 +426,48 @@ export default function IntegrationsManager() {
               </p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Access Key ID</label>
+                  <label htmlFor="aws-access-key" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Access Key ID</label>
                   <input
+                    id="aws-access-key"
                     type="text"
                     value={awsAccessKey}
                     onChange={(e) => setAwsAccessKey(e.target.value)}
                     placeholder="AKIAIOSFODNN7EXAMPLE"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Secret Access Key</label>
+                  <label htmlFor="aws-secret-key" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Secret Access Key</label>
                   <input
+                    id="aws-secret-key"
                     type="password"
                     value={awsSecretKey}
                     onChange={(e) => setAwsSecretKey(e.target.value)}
                     placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Default Region</label>
+                  <label htmlFor="aws-region" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Default Region</label>
                   <input
+                    id="aws-region"
                     type="text"
                     value={awsRegion}
                     onChange={(e) => setAwsRegion(e.target.value)}
                     placeholder="us-east-1"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 {awsAccessKey.startsWith("ASIA") && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Session Token</label>
+                    <label htmlFor="aws-session-token" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Session Token</label>
                     <input
+                      id="aws-session-token"
                       type="password"
                       value={awsSessionToken}
                       onChange={(e) => setAwsSessionToken(e.target.value)}
                       placeholder="IQoJb3JpZ2luX2VjEGoaCXVzLWVhc3QtMSJGMEQC..."
-                      className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all font-mono"
+                      className="form-input font-mono"
                     />
                   </div>
                 )}
@@ -467,14 +475,14 @@ export default function IntegrationsManager() {
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-800/80">
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors"
+                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleToggleConnect("aws", true, { access_key_id: awsAccessKey, secret_access_key: awsSecretKey, region: awsRegion, session_token: awsSessionToken })}
                   disabled={!awsAccessKey || !awsSecretKey || !awsRegion || (awsAccessKey.startsWith("ASIA") && !awsSessionToken)}
-                  className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
+                  className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
                 >
                   Authenticate
                 </button>
@@ -485,9 +493,9 @@ export default function IntegrationsManager() {
 
         {/* AWS Error Modal */}
         {awsErrorModal.show && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="aws-error-title" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-2xl overflow-hidden relative shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
-              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+              <h3 id="aws-error-title" className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <ShieldAlert className="text-rose-500 w-5 h-5" size={20} /> AWS authentication failed
               </h3>
               <p className="text-sm text-slate-300 leading-relaxed">
@@ -501,7 +509,7 @@ export default function IntegrationsManager() {
               <div className="flex justify-end pt-4">
                 <button
                   onClick={() => setAwsErrorModal({ show: false, code: "", message: "" })}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-700"
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-700 cursor-pointer"
                 >
                   Close
                 </button>
@@ -512,23 +520,23 @@ export default function IntegrationsManager() {
 
         {/* Azure Modal */}
         {activeModal === "azure" && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="azure-modal-title" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="glass-panel border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden relative shadow-2xl p-8 space-y-6">
-              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <h3 id="azure-modal-title" className="text-xl font-bold text-white flex items-center gap-3">
                 <Key className="text-sky-400" size={24} /> Connect Azure
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
                 Provide Service Principal credentials to authorize resource discovery and log analytics querying.
               </p>
-              <div className="bg-sky-500/10 border border-sky-500/20 p-3 rounded-lg flex flex-col gap-2">
+              <div className="bg-[#0b1025] border border-sky-500/20 p-3 rounded-lg flex flex-col gap-2">
                 <div className="flex items-start gap-2">
-                  <ShieldCheck className="text-sky-400 mt-0.5" size={16} shrink-0 />
+                  <ShieldCheck className="text-sky-400 mt-0.5 shrink-0" size={16} />
                   <p className="text-xs text-sky-200">
                     <strong className="text-sky-300">Note for AKS:</strong> To securely view internal Kubernetes workloads, ensure the Service Principal is assigned the <strong>Azure Kubernetes Service Cluster User Role</strong>. Do not use the Admin role for security reasons.
                   </p>
                 </div>
                 <div className="flex items-start gap-2 pt-2 border-t border-sky-500/20">
-                  <Key className="text-sky-400 mt-0.5" size={16} shrink-0 />
+                  <Key className="text-sky-400 mt-0.5 shrink-0" size={16} />
                   <div className="text-xs text-sky-200">
                     <strong className="text-sky-300">Permission Requirements:</strong>
                     <ul className="list-disc ml-4 mt-1 space-y-1">
@@ -541,11 +549,13 @@ export default function IntegrationsManager() {
               </div>
               
               <div className="space-y-4">
-                <div className="flex bg-black/40 p-1.5 rounded-xl border border-slate-800">
+                <div role="tablist" aria-label="Azure Scope Selection" className="flex bg-black/40 p-1.5 rounded-xl border border-slate-800">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={azureScope === "account"}
                     onClick={() => setAzureScope("account")}
-                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                       azureScope === "account" ? "bg-sky-600 text-white shadow-md" : "text-slate-500 hover:text-slate-300"
                     }`}
                   >
@@ -553,8 +563,10 @@ export default function IntegrationsManager() {
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={azureScope === "application"}
                     onClick={() => setAzureScope("application")}
-                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
                       azureScope === "application" ? "bg-sky-600 text-white shadow-md" : "text-slate-500 hover:text-slate-300"
                     }`}
                   >
@@ -564,50 +576,55 @@ export default function IntegrationsManager() {
 
                 {azureScope === "account" && (
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Subscription ID</label>
+                    <label htmlFor="azure-subscription" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Subscription ID</label>
                     <input
+                      id="azure-subscription"
                       type="text"
                       value={azureSubscription}
                       onChange={(e) => setAzureSubscription(e.target.value)}
                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-sky-500/50 font-mono"
+                      className="form-input font-mono"
                     />
                   </div>
                 )}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Tenant ID</label>
+                  <label htmlFor="azure-tenant" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Tenant ID</label>
                   <input
+                    id="azure-tenant"
                     type="text"
                     value={azureTenant}
                     onChange={(e) => setAzureTenant(e.target.value)}
                     placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-sky-500/50 font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Client ID</label>
+                  <label htmlFor="azure-client" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Client ID</label>
                   <input
+                    id="azure-client"
                     type="text"
                     value={azureClient}
                     onChange={(e) => setAzureClient(e.target.value)}
                     placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-sky-500/50 font-mono"
+                    className="form-input font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Client Secret</label>
+                  <label htmlFor="azure-secret" className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Client Secret</label>
                   <div className="relative">
                     <input
+                      id="azure-secret"
                       type={showAzureSecret ? "text" : "password"}
                       value={azureSecret}
                       onChange={(e) => setAzureSecret(e.target.value)}
                       placeholder="••••••••••••••••"
-                      className="w-full bg-black/40 border border-slate-800 rounded-xl px-4 py-3 pr-10 text-sm text-slate-200 focus:outline-none focus:border-sky-500/50 font-mono"
+                      className="form-input font-mono pr-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowAzureSecret(!showAzureSecret)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                      aria-label={showAzureSecret ? "Hide secret" : "Show secret"}
                     >
                       {showAzureSecret ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -617,14 +634,14 @@ export default function IntegrationsManager() {
               <div className="flex justify-end gap-3 pt-6 border-t border-slate-800/80">
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors"
+                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleToggleConnect("azure", true, { scope: azureScope, subscription_id: azureSubscription, client_id: azureClient, client_secret: azureSecret, tenant_id: azureTenant })}
                   disabled={!azureTenant || !azureClient || !azureSecret || (azureScope === "account" && !azureSubscription)}
-                  className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-sky-500/20"
+                  className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-sky-500/20 cursor-pointer"
                 >
                   Authenticate
                 </button>
@@ -635,10 +652,10 @@ export default function IntegrationsManager() {
 
         {/* Clear Data Confirmation Modal */}
         {showClearDataModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="clear-data-title" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="glass-panel border border-rose-500/50 w-full max-w-md rounded-2xl overflow-hidden relative shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200">
               <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-              <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <h3 id="clear-data-title" className="text-xl font-bold text-white flex items-center gap-3">
                 <ShieldAlert className="text-rose-500" size={24} /> Clear Operational Data
               </h3>
               <p className="text-sm text-slate-300 leading-relaxed">
@@ -652,14 +669,14 @@ export default function IntegrationsManager() {
                 <button
                   onClick={() => setShowClearDataModal(false)}
                   disabled={clearingData}
-                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors disabled:opacity-50"
+                  className="text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 px-5 py-3 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleClearData}
                   disabled={clearingData}
-                  className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-rose-500/20 flex items-center gap-2"
+                  className="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-rose-500/20 flex items-center gap-2 cursor-pointer"
                 >
                   {clearingData ? "Clearing..." : "Yes, Clear Data"}
                 </button>

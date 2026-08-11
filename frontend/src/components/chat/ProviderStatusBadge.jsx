@@ -34,17 +34,19 @@ export default function ProviderStatusBadge({ providerStatus, loading }) {
   return (
     <div
       tabIndex={0}
+      role="status"
+      aria-live="polite"
       title={isAvailable ? "Provider operational" : "Provider degradation or misconfiguration detected"}
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors ${
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-colors ${
         isAvailable
-          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-          : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+          : "bg-amber-500/10 border-amber-500/30 text-amber-400"
       }`}
     >
       {isAvailable ? (
-        <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
+        <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
       ) : (
-        <AlertTriangle size={11} className="text-amber-400 shrink-0" />
+        <AlertTriangle size={13} className="text-amber-400 shrink-0" />
       )}
       <span>{labelText}</span>
     </div>

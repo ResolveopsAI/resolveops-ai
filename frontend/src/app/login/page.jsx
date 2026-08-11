@@ -30,7 +30,7 @@ const LogoMark = ({ size = 40 }) => (
 /* ─── Shared input style ─────────────────────────────────── */
 const inputCls = `w-full px-3.5 py-2.5 rounded-xl text-sm text-slate-200
   placeholder:text-slate-600 bg-[#0d1425] border border-white/[0.08]
-  focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/25
+  focus:outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20
   transition-all duration-150`;
 
 /* ─── Register flow ─────────────────────────────────────── */
@@ -70,11 +70,11 @@ function RegisterForm() {
 
   return (
     <>
-      {error   && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm mb-4">{error}</div>}
-      {success && <div className="px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-4">{success}</div>}
+      {error   && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm mb-4" role="alert">{error}</div>}
+      {success && <div className="px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-4" role="status">{success}</div>}
 
       {/* Step indicators */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6" aria-label="Registration Steps">
         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step === "otp" ? "bg-emerald-500 text-white" : "bg-sky-500 text-white"}`}>
           {step === "otp" ? "✓" : "1"}
         </div>
@@ -87,18 +87,18 @@ function RegisterForm() {
       {step === "details" && (
         <form onSubmit={handleRequestOtp} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Full Name</label>
-            <input className={inputCls} placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} required />
+            <label htmlFor="reg-fullname" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Full Name</label>
+            <input id="reg-fullname" className={inputCls} placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" required />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Work Email</label>
-            <input className={inputCls} type="email" placeholder="admin@company.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
+            <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Work Email</label>
+            <input id="reg-email" className={inputCls} type="email" placeholder="admin@company.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} autoComplete="email" required />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Account Role</label>
+            <label htmlFor="reg-role" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Account Role</label>
             <div className="relative">
               <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-              <select className={inputCls + " pl-9 appearance-none"} value={regRole} onChange={e => {setRegRole(e.target.value); setAdminSecret("");}} required>
+              <select id="reg-role" className={inputCls + " pl-9 appearance-none"} value={regRole} onChange={e => {setRegRole(e.target.value); setAdminSecret("");}} required>
                 <option value="user">Standard User</option>
                 <option value="admin">Administrator</option>
               </select>
@@ -107,28 +107,28 @@ function RegisterForm() {
           
           {regRole === "admin" && (
             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-2">
+              <label htmlFor="reg-admin-secret" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck size={12} className="text-amber-500" /> Admin Invite Code
               </label>
               <div className="relative">
                 <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-                <input className={inputCls + " pl-9 border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/25"} 
+                <input id="reg-admin-secret" className={inputCls + " pl-9 border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/25"} 
                   type="password" placeholder="Enter secure invite code" value={adminSecret} onChange={e => setAdminSecret(e.target.value)} required={regRole === "admin"} />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
+            <label htmlFor="reg-password" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Password</label>
             <div className="relative">
-              <input className={inputCls + " pr-10"} type={showPw ? "text" : "password"} placeholder="Min. 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} required />
-              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <input id="reg-password" className={inputCls + " pr-10"} type={showPw ? "text" : "password"} placeholder="Min. 8 characters" value={regPassword} onChange={e => setRegPassword(e.target.value)} autoComplete="new-password" required />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label={showPw ? "Hide password" : "Show password"}>
                 {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
               </button>
             </div>
           </div>
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             style={{ boxShadow: "0 0 30px rgba(56,189,248,0.25)" }}>
             {loading ? "Sending..." : <><Mail size={15}/> Send Verification Code <ArrowRight size={15}/></>}
           </button>
@@ -139,17 +139,17 @@ function RegisterForm() {
         <form onSubmit={handleRegister} className="space-y-4">
           <p className="text-center text-sm text-slate-400">Enter the 6-digit code sent to <br/><span className="text-white font-semibold">{regEmail}</span></p>
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Verification Code</label>
-            <input className={inputCls + " text-center text-2xl font-mono tracking-[0.5em]"} placeholder="000000"
+            <label htmlFor="reg-otp" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Verification Code</label>
+            <input id="reg-otp" className={inputCls + " text-center text-2xl font-mono tracking-[0.5em]"} placeholder="000000"
               value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g,"").slice(0,6))} maxLength={6} required />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
             style={{ boxShadow: "0 0 30px rgba(56,189,248,0.25)" }}>
             {loading ? "Creating Account..." : <><ShieldCheck size={15}/> Verify & Create Account</>}
           </button>
           <button type="button" onClick={() => { setStep("details"); setError(""); setSuccess(""); }}
-            className="w-full text-slate-500 hover:text-slate-300 text-sm transition-colors text-center">
+            className="w-full text-slate-500 hover:text-slate-300 text-sm transition-colors text-center cursor-pointer">
             ← Change email or resend OTP
           </button>
         </form>
@@ -261,14 +261,21 @@ export default function LoginPage() {
               style={{ background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)" }} />
 
             {/* Tab switcher */}
-            <div className="flex rounded-xl p-1 mb-7" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div role="tablist" aria-label="Access Options" className="flex rounded-xl p-1 mb-7" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)" }}>
               {["login", "register"].map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                <button 
+                  key={t} 
+                  role="tab"
+                  aria-selected={tab === t}
+                  aria-controls={`${t}-panel`}
+                  id={`${t}-tab`}
+                  onClick={() => setTab(t)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${
                     tab === t
                       ? "bg-sky-500 text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-300"
-                  }`}>
+                  }`}
+                >
                   {t}
                 </button>
               ))}
@@ -276,33 +283,34 @@ export default function LoginPage() {
 
             {/* Login form */}
             {tab === "login" && (
-              <form onSubmit={handleLogin} className="space-y-4">
-                {error && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">{error}</div>}
+              <form id="login-panel" role="tabpanel" aria-labelledby="login-tab" onSubmit={handleLogin} className="space-y-4">
+                {error && <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm" role="alert">{error}</div>}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Email</label>
+                  <label htmlFor="login-email" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Email</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-                    <input className={inputCls + " pl-9"} type="email" placeholder="admin@company.com"
-                      value={email} onChange={e => setEmail(e.target.value)} required />
+                    <input id="login-email" className={inputCls + " pl-9"} type="email" placeholder="admin@company.com"
+                      value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required />
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Password</label>
-                    <a href="#" className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold">Forgot?</a>
+                    <label htmlFor="login-password" className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Password</label>
+                    <a href="#" className="text-xs text-sky-400 hover:text-sky-300 font-semibold">Forgot?</a>
                   </div>
                   <div className="relative">
                     <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-                    <input className={inputCls + " pl-9 pr-10"} type={showPw ? "text" : "password"}
-                      value={password} onChange={e => setPassword(e.target.value)} required />
+                    <input id="login-password" className={inputCls + " pl-9 pr-10"} type={showPw ? "text" : "password"}
+                      value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required />
                     <button type="button" onClick={() => setShowPw(!showPw)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      aria-label={showPw ? "Hide password" : "Show password"}>
                       {showPw ? <EyeOff size={15}/> : <Eye size={15}/>}
                     </button>
                   </div>
                 </div>
                 <button type="submit" disabled={loading}
-                  className="w-full py-2.5 mt-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+                  className="w-full py-2.5 mt-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 cursor-pointer hover:shadow-sky-500/20 hover:scale-[1.01]"
                   style={{ background: loading ? "#0ea5e9" : "linear-gradient(90deg,#0ea5e9,#6366f1)", boxShadow: "0 0 30px rgba(56,189,248,0.2)" }}>
                   {loading ? "Authenticating..." : "Sign In to Command Center"}
                 </button>

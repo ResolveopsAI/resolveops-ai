@@ -10,9 +10,20 @@ logger = logging.getLogger(__name__)
 
 class PredictiveEngine:
     def __init__(self):
-        ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+        ai_provider = os.getenv("AI_PROVIDER", "groq").lower()
 
-        if ai_provider == "openai":
+        if ai_provider == "groq":
+            # Groq Cloud — free tier, fast inference, supports Llama 3.1/3.3 & Mixtral
+            from langchain_groq import ChatGroq
+            self.chat_model = ChatGroq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                model=os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant"),
+                temperature=0.1,
+                max_tokens=4096,
+            )
+            logger.info("PredictiveEngine: using Groq Cloud provider")
+
+        elif ai_provider == "openai":
             # Ollama (or any OpenAI-compatible endpoint) running locally on the host / EC2
             from langchain_openai import ChatOpenAI
             self.chat_model = ChatOpenAI(
@@ -22,6 +33,8 @@ class PredictiveEngine:
                 temperature=0.1,
                 max_tokens=4096,
             )
+            logger.info("PredictiveEngine: using OpenAI-compatible (Ollama) provider")
+
         else:
             # Bedrock fallback (only used when AI_PROVIDER=bedrock)
             import boto3
@@ -33,6 +46,7 @@ class PredictiveEngine:
                 model_id=os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0"),
                 model_kwargs={"temperature": 0.1},
             )
+            logger.info("PredictiveEngine: using Amazon Bedrock provider")
 
     def analyze_logs_and_predict(self, logs: List[Dict]) -> Tuple[bool, Optional[Dict]]:
         """

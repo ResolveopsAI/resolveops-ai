@@ -84,7 +84,49 @@ Generate your analysis in valid JSON format with the following keys:
 - evidence: Array of log lines proving the root cause
 """
 
-    if ai_provider == "azure_foundry":
+    if ai_provider == "groq":
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        if not groq_api_key:
+            raise HTTPException(status_code=500, detail="GROQ_API_KEY environment variable not set")
+
+        try:
+            from langchain_groq import ChatGroq
+            from langchain_core.messages import HumanMessage, SystemMessage
+
+            chat = ChatGroq(
+                api_key=groq_api_key,
+                model=os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant"),
+                temperature=0.1,
+            )
+
+            res = chat.invoke([
+                SystemMessage(content="You are a helpful AI that returns strictly valid JSON."),
+                HumanMessage(content=prompt)
+            ])
+
+            content = res.content
+            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            parsed = json.loads(content)
+
+            return {
+                "status": "success",
+                "analysis": {
+                    "status": "ai_generated",
+                    "provider": "groq",
+                    "model": os.getenv("GROQ_MODEL_NAME", "llama-3.1-8b-instant"),
+                    "summary": parsed.get("summary", "Analysis"),
+                    "probable_root_cause": parsed.get("probable_root_cause", ""),
+                    "recommended_fix": parsed.get("recommended_fix", []),
+                    "evidence": parsed.get("evidence", []),
+                    "ai_provider_status": "available"
+                }
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Groq error: {str(e)}")
+
+    elif ai_provider == "azure_foundry":
         # Use Azure AI Foundry
         azure_endpoint = os.getenv("AZURE_AI_FOUNDRY_ENDPOINT") or os.getenv("AZURE_OPENAI_ENDPOINT")
         azure_api_key = os.getenv("AZURE_AI_FOUNDRY_API_KEY") or os.getenv("AZURE_OPENAI_API_KEY")

@@ -175,22 +175,26 @@ export default function AnalyticsPage() {
         )}
 
         {/* Provider Filter Tabs Bar (Fully Visible & Accessible) */}
-        <div className="my-2 py-2 px-3 bg-[#0d1424]/90 backdrop-blur-md rounded-2xl border border-white/10 flex flex-wrap items-center gap-3 shadow-2xl z-10 relative">
+        <div role="tablist" aria-label="Telemetry Providers" className="my-2 py-2 px-3 bg-[var(--bg-surface)]/90 backdrop-blur-md rounded-2xl border border-white/10 flex flex-wrap items-center gap-3 shadow-2xl z-10 relative">
           <button
+            role="tab"
+            aria-selected={activeTab === "all"}
             onClick={() => setActiveTab("all")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "all"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-2 ring-indigo-400/50"
+                ? "bg-sky-600 text-white shadow-lg shadow-sky-500/30 ring-2 ring-sky-400/50"
                 : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
             }`}
           >
-            <Activity size={14} className={activeTab === "all" ? "text-white" : "text-indigo-400"} />
+            <Activity size={14} className={activeTab === "all" ? "text-white" : "text-sky-400"} />
             <span>All Platforms Overview</span>
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === "aws"}
             onClick={() => setActiveTab("aws")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "aws"
                 ? "bg-sky-600 text-white shadow-lg shadow-sky-500/30 ring-2 ring-sky-400/50"
                 : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
@@ -201,26 +205,30 @@ export default function AnalyticsPage() {
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === "github"}
             onClick={() => setActiveTab("github")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "github"
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30 ring-2 ring-purple-400/50"
+                ? "bg-sky-600 text-white shadow-lg shadow-sky-500/30 ring-2 ring-sky-400/50"
                 : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
             }`}
           >
-            <GitBranch size={14} className={activeTab === "github" ? "text-white" : "text-purple-400"} />
+            <GitBranch size={14} className={activeTab === "github" ? "text-white" : "text-sky-400"} />
             <span>GitHub Analytics ({githubResources.length || 1})</span>
           </button>
 
           <button
+            role="tab"
+            aria-selected={activeTab === "azure"}
             onClick={() => setActiveTab("azure")}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "azure"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-400/50"
+                ? "bg-sky-600 text-white shadow-lg shadow-sky-500/30 ring-2 ring-sky-400/50"
                 : "bg-white/5 text-slate-300 hover:text-white hover:bg-white/10"
             }`}
           >
-            <Server size={14} className={activeTab === "azure" ? "text-white" : "text-blue-400"} />
+            <Server size={14} className={activeTab === "azure" ? "text-white" : "text-sky-400"} />
             <span>Azure Analytics ({azureResources.length || 0})</span>
           </button>
         </div>
@@ -275,40 +283,40 @@ export default function AnalyticsPage() {
             </div>
 
             {/* AWS Key Metrics (Derived directly from user's discovered resources) */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">EC2 INSTANCE FLEET</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div role="region" aria-label="EC2 Instance Fleet status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">EC2 INSTANCE FLEET</span>
                 <p className="text-2xl font-bold text-white font-mono">{ec2Instances.length || 1} Running</p>
-                <p className="text-[10px] text-emerald-400 font-mono">
+                <p className="text-xs text-emerald-400 font-mono">
                   {ec2Instances[0]?.resource_name || "clahanacademy"} ({ec2Instances[0]?.metadata?.instance_type || "t2.xlarge"})
                 </p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">VPC & NETWORKING</span>
-                <p className="text-2xl font-bold text-indigo-400 font-mono">{subnetCount} Subnets</p>
-                <p className="text-[10px] text-slate-400 font-mono">{vpcCount} VPC • {sgCount} Security Groups</p>
+              <div role="region" aria-label="VPC and networking status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">VPC & NETWORKING</span>
+                <p className="text-2xl font-bold text-sky-400 font-mono">{subnetCount} Subnets</p>
+                <p className="text-xs text-slate-400 font-mono">{vpcCount} VPC • {sgCount} Security Groups</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">S3 STORAGE BUCKETS</span>
-                <p className="text-2xl font-bold text-purple-400 font-mono">{s3Count > 0 ? `${s3Count} Buckets` : "80 GB Storage"}</p>
-                <p className="text-[10px] text-purple-300 font-mono">AWS KMS (AES-256) Active</p>
+              <div role="region" aria-label="S3 storage buckets status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">S3 STORAGE BUCKETS</span>
+                <p className="text-2xl font-bold text-sky-400 font-mono">{s3Count > 0 ? `${s3Count} Buckets` : "80 GB Storage"}</p>
+                <p className="text-xs text-slate-400 font-mono">AWS KMS (AES-256) Active</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">ON-DEMAND RUNNING COST</span>
+              <div role="region" aria-label="On-demand running cost status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">ON-DEMAND RUNNING COST</span>
                 <p className="text-2xl font-bold text-emerald-400 font-mono">${awsCostMonthly}/mo</p>
-                <p className="text-[10px] text-slate-400 font-mono">$0.1856 / hr (t2.xlarge in ap-south-1)</p>
+                <p className="text-xs text-slate-400 font-mono">$0.1856 / hr (t2.xlarge in ap-south-1)</p>
               </div>
             </div>
 
             {/* AWS Performance Graphs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* EC2 CPU Performance */}
-              <div className="border border-white/10 rounded-2xl p-5 bg-[#080812] space-y-4 shadow-xl">
+              <div className="glass-panel rounded-2xl p-6 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold font-mono text-white uppercase tracking-wider flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <Cpu size={14} className="text-sky-400" /> EC2 Fleet CPU Utilization (%)
                   </h4>
-                  <span className="text-[10px] text-sky-400 font-mono">24 Hour Average</span>
+                  <span className="text-xs text-sky-400 font-mono">24 Hour Average</span>
                 </div>
                 <div className="h-56 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -330,12 +338,12 @@ export default function AnalyticsPage() {
               </div>
 
               {/* AWS CloudWatch Anomalies & Errors */}
-              <div className="border border-white/10 rounded-2xl p-5 bg-[#080812] space-y-4 shadow-xl">
+              <div className="glass-panel rounded-2xl p-6 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold font-mono text-white uppercase tracking-wider flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <AlertTriangle size={14} className="text-amber-400" /> CloudWatch Alarms & System Anomalies
                   </h4>
-                  <span className="text-[10px] text-amber-400 font-mono">0 Active Alarms</span>
+                  <span className="text-xs text-amber-400 font-mono">0 Active Alarms</span>
                 </div>
                 <div className="h-56 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -366,36 +374,36 @@ export default function AnalyticsPage() {
             </div>
 
             {/* GitHub Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">CONNECTED REPOSITORIES</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div role="region" aria-label="Connected repositories status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">CONNECTED REPOSITORIES</span>
                 <p className="text-2xl font-bold text-white font-mono">{githubResources.length || 2} Repos</p>
-                <p className="text-[10px] text-purple-400 font-mono">Sath2003 / ResolveOps-AI</p>
+                <p className="text-xs text-sky-400 font-mono">Sath2003 / ResolveOps-AI</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">WORKFLOW SUCCESS RATE</span>
+              <div role="region" aria-label="Workflow success rate" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">WORKFLOW SUCCESS RATE</span>
                 <p className="text-2xl font-bold text-emerald-400 font-mono">98.2%</p>
-                <p className="text-[10px] text-emerald-400 font-mono">GitHub Actions CI/CD</p>
+                <p className="text-xs text-emerald-400 font-mono">GitHub Actions CI/CD</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">OPEN PULL REQUESTS</span>
+              <div role="region" aria-label="Open pull requests status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">OPEN PULL REQUESTS</span>
                 <p className="text-2xl font-bold text-sky-400 font-mono">8 Open PRs</p>
-                <p className="text-[10px] text-slate-400 font-mono">Avg review time: 42 mins</p>
+                <p className="text-xs text-slate-400 font-mono">Avg review time: 42 mins</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">SECURITY SCANNING</span>
+              <div role="region" aria-label="Security scanning status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">SECURITY SCANNING</span>
                 <p className="text-2xl font-bold text-emerald-400 font-mono">0 Alerts</p>
-                <p className="text-[10px] text-emerald-400 font-mono">Dependabot & Secret Scan</p>
+                <p className="text-xs text-emerald-400 font-mono">Dependabot & Secret Scan</p>
               </div>
             </div>
 
             {/* GitHub Graphs */}
-            <div className="border border-white/10 rounded-2xl p-5 bg-[#080812] space-y-4 shadow-xl">
+            <div className="glass-panel rounded-2xl p-6 space-y-4 shadow-xl">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold font-mono text-white uppercase tracking-wider flex items-center gap-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <GitBranch size={14} className="text-purple-400" /> Actions Workflow Runs (Passed vs Failed)
                 </h4>
-                <span className="text-[10px] text-purple-400 font-mono">7 Day Velocity</span>
+                <span className="text-xs text-purple-400 font-mono">7 Day Velocity</span>
               </div>
               <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -437,36 +445,36 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Azure Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">AZURE VIRTUAL MACHINES</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div role="region" aria-label="Azure virtual machines status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">AZURE VIRTUAL MACHINES</span>
                 <p className="text-2xl font-bold text-white font-mono">{azureResources.length || 2} VMs Active</p>
-                <p className="text-[10px] text-emerald-400 font-mono">Standard_D2s_v3 • East US</p>
+                <p className="text-xs text-emerald-400 font-mono">Standard_D2s_v3 • East US</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">AKS CLUSTER NODES</span>
-                <p className="text-2xl font-bold text-blue-400 font-mono">3 Nodes Healthy</p>
-                <p className="text-[10px] text-blue-300 font-mono">Kubernetes v1.28.3</p>
+              <div role="region" aria-label="AKS cluster nodes status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">AKS CLUSTER NODES</span>
+                <p className="text-2xl font-bold text-sky-400 font-mono">3 Nodes Healthy</p>
+                <p className="text-xs text-sky-300 font-mono">Kubernetes v1.28.3</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">AZURE MONITOR ALERTS</span>
+              <div role="region" aria-label="Azure monitor alerts status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">AZURE MONITOR ALERTS</span>
                 <p className="text-2xl font-bold text-emerald-400 font-mono">0 Fired</p>
-                <p className="text-[10px] text-slate-400 font-mono">Metrics collector active</p>
+                <p className="text-xs text-slate-400 font-mono">Metrics collector active</p>
               </div>
-              <div className="p-4 rounded-2xl bg-[#080812] border border-white/10 space-y-1">
-                <span className="text-[10px] text-slate-400 font-mono uppercase">MONTHLY AZURE COST</span>
+              <div role="region" aria-label="Monthly Azure cost status" className="glass-panel rounded-2xl p-5 space-y-1.5 transition-all hover:scale-[1.01] card-hover-lift">
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">MONTHLY AZURE COST</span>
                 <p className="text-2xl font-bold text-cyan-400 font-mono">$48.00 / mo</p>
-                <p className="text-[10px] text-slate-400 font-mono">Actual Billed MTD</p>
+                <p className="text-xs text-slate-400 font-mono">Actual Billed MTD</p>
               </div>
             </div>
 
             {/* Azure Graphs */}
-            <div className="border border-white/10 rounded-2xl p-5 bg-[#080812] space-y-4 shadow-xl">
+            <div className="glass-panel rounded-2xl p-6 space-y-4 shadow-xl">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold font-mono text-white uppercase tracking-wider flex items-center gap-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <Cpu size={14} className="text-blue-400" /> Azure VM CPU & AKS Cluster Load
                 </h4>
-                <span className="text-[10px] text-blue-400 font-mono">24 Hour Telemetry</span>
+                <span className="text-xs text-blue-400 font-mono">24 Hour Telemetry</span>
               </div>
               <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -503,23 +511,23 @@ function roundNum(num) {
 
 function MetricCard({ title, value, statusColor, subtext, icon: Icon }) {
   return (
-    <div className="border border-white/10 rounded-2xl p-4 bg-[#080812] space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider font-mono">{title}</span>
-        <Icon size={16} className={statusColor} />
+    <div role="region" aria-label={`${title}: ${value}`} className="glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all hover:scale-[1.02] card-hover-lift">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{title}</span>
+        <Icon size={18} className={statusColor} />
       </div>
-      <div className={`text-2xl font-bold tracking-tight font-mono ${statusColor}`}>{value}</div>
-      {subtext && <p className="text-[10px] text-slate-500 font-mono">{subtext}</p>}
+      <div className={`text-2xl font-black tracking-tight ${statusColor} mb-0.5`}>{value}</div>
+      {subtext && <p className="text-xs text-slate-500">{subtext}</p>}
     </div>
   );
 }
 
 function ToolRow({ name, source, status }) {
   return (
-    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-black/30 text-xs font-mono">
+    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-black/30 text-xs font-mono">
       <span className="text-slate-300 truncate">{name}</span>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[10px] text-slate-500 font-sans">{source}</span>
+        <span className="text-xs text-slate-500">{source}</span>
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       </div>
     </div>
