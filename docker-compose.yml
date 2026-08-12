@@ -77,10 +77,6 @@ services:
     environment:
       - VISUAL_STORAGE_DIR=/app/data/visuals
       - SSH_CREDENTIAL_SERVICE_URL=http://ssh-credential-service:8000
-      - OPENAI_BASE_URL=http://ollama:11434/v1
-      - AI_PROVIDER=openai
-      - OPENAI_API_KEY=ollama
-      - OPENAI_MODEL_NAME=llama3.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
@@ -201,11 +197,6 @@ services:
       - .env
     environment:
       - VISUAL_STORAGE_DIR=/app/data/visuals
-      - OPENAI_MODEL=llama3.1
-      - OPENAI_MODEL_NAME=llama3.1
-      - OPENAI_BASE_URL=http://ollama:11434/v1
-      - AI_PROVIDER=openai
-      - OPENAI_API_KEY=ollama
     volumes:
       - generated_visuals:/app/data/visuals
     networks:
@@ -242,15 +233,6 @@ services:
       - backend-net
     restart: unless-stopped
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: resolveops-ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - backend-net
-    restart: unless-stopped
-
 networks:
   frontend-net:
     driver: bridge
@@ -262,4 +244,3 @@ volumes:
   generated_visuals:
   caddy_data:
   caddy_config:
-  ollama_data:
