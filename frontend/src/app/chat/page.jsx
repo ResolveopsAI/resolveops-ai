@@ -275,8 +275,17 @@ export default function AICopilot() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center bg-[#060610]">
-          <Activity className="animate-spin text-indigo-500 w-8 h-8" />
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5 bg-[#060610]">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border border-violet-500/20 flex items-center justify-center">
+              <Activity className="text-violet-400 w-7 h-7 animate-spin" />
+            </div>
+            <div className="absolute inset-0 rounded-full bg-violet-500/10 blur-xl animate-pulse" />
+          </div>
+          <div className="text-center">
+            <p className="text-slate-200 font-semibold text-sm">Initializing AI Copilot</p>
+            <p className="text-slate-500 text-xs font-mono mt-1 tracking-wider">CONNECTING INTELLIGENCE...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -324,21 +333,21 @@ export default function AICopilot() {
 
               {sending && (
                 <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600/80 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-violet-600/80 flex items-center justify-center shrink-0">
                     <Bot size={15} />
                   </div>
                   <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/4 border border-white/8">
-                    <p className="text-xs text-indigo-400 font-medium capitalize">
+                    <p className="text-xs text-violet-400 font-medium capitalize">
                       {sendingStatus} investigation...
                     </p>
                     <div className="flex items-center gap-1.5 mt-2">
-                      <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" />
+                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" />
                       <div
-                        className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce"
                         style={{ animationDelay: "0.15s" }}
                       />
                       <div
-                        className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"
+                        className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce"
                         style={{ animationDelay: "0.3s" }}
                       />
                     </div>

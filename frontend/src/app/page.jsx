@@ -90,28 +90,28 @@ export default function GlobalDashboard() {
         {/* ── Hero ───────────────────────────────────────────────── */}
         <div className="relative rounded-2xl overflow-hidden p-7 lg:p-9"
           style={{
-            background: "linear-gradient(135deg, #0d1a2d 0%, #0b1525 60%, #0d1220 100%)",
-            border: "1px solid rgba(56,189,248,0.12)",
-            boxShadow: "0 0 60px rgba(56,189,248,0.06), 0 4px 30px rgba(0,0,0,0.4)"
+            background: "linear-gradient(135deg, #100f24 0%, #090a16 60%, #05060f 100%)",
+            border: "1px solid rgba(139,92,246,0.12)",
+            boxShadow: "0 0 60px rgba(139,92,246,0.04), 0 4px 30px rgba(0,0,0,0.4)"
           }}>
           {/* Background grid + glow orbs */}
           <div className="absolute inset-0 opacity-[0.03]"
             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none" />
           {/* Top border glow */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/30 to-transparent" />
 
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-4"
-                style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981" }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 All Systems Nominal
               </div>
               <h1 className="text-3xl lg:text-4xl font-black tracking-tight mb-3 gradient-text-white">
                 ResolveOps AI
-                <span className="text-sky-400 ml-2 text-2xl font-light opacity-70">Command Center</span>
+                <span className="text-violet-400 ml-2 text-2xl font-light opacity-70">Command Center</span>
               </h1>
               <p className="text-sm text-slate-400 max-w-xl leading-relaxed">
                 Unified SRE intelligence across Kubernetes, Azure, AWS, GitHub Actions, and Docker.
@@ -120,7 +120,7 @@ export default function GlobalDashboard() {
             </div>
             <button onClick={fetchData}
               className="btn-ghost shrink-0 group">
-              <RefreshCw size={15} className={`${loading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} text-sky-400`} />
+              <RefreshCw size={15} className={`${loading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} text-violet-400`} />
               Sync Telemetry
             </button>
           </div>
@@ -129,8 +129,8 @@ export default function GlobalDashboard() {
         {/* ── Stat Cards ─────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <MetricCard title="System Health" value={stats.health} icon={<Activity size={16}/>} color="emerald" pulse />
-          <MetricCard title="Connected Orgs" value={`${totalConnected}/3`} icon={<Network size={16}/>} color="sky" />
-          <MetricCard title="Resources" value={totalResources} icon={<Server size={16}/>} color="indigo" />
+          <MetricCard title="Connected Orgs" value={`${totalConnected}/3`} icon={<Network size={16}/>} color="indigo" />
+          <MetricCard title="Resources" value={totalResources} icon={<Server size={16}/>} color="violet" />
           <MetricCard title="Active Risks" value={stats.risks} icon={<ShieldAlert size={16}/>} color="amber" alert={stats.risks > 0} />
           <MetricCard title="Failed Pipelines" value={stats.failures} icon={<AlertTriangle size={16}/>} color="rose" alert={stats.failures > 0} />
           <CostMetricCard costData={stats.cost} />
@@ -138,7 +138,7 @@ export default function GlobalDashboard() {
 
         {/* ── Platform Cards ─────────────────────────────────────── */}
         <div className="flex items-center gap-2 pt-1">
-          <div className="w-1 h-4 rounded-full bg-sky-400" />
+          <div className="w-1 h-4 rounded-full bg-violet-400" />
           <h2 className="text-sm font-bold text-white uppercase tracking-widest">Infrastructure Integrations</h2>
           <div className="flex-1 h-px bg-white/5 ml-2" />
         </div>
@@ -166,11 +166,11 @@ export default function GlobalDashboard() {
 
           {/* AI Recommendations */}
           <div className="lg:col-span-2 glass-panel rounded-2xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/20 to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-400/20 to-transparent" />
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20">
-                  <Zap size={14} className="text-sky-400" />
+                <div className="p-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                  <Zap size={14} className="text-violet-400" />
                 </div>
                 AI Recommendations
               </h3>
@@ -211,7 +211,7 @@ export default function GlobalDashboard() {
                   <p className="text-xs text-slate-500">No recent pipeline activity</p>
                 </div>
               )}
-              <Link href="/github" className="flex items-center justify-center gap-1 text-[11px] font-semibold text-sky-400 hover:text-sky-300 mt-2 pt-3 border-t border-white/[0.05] transition-colors">
+              <Link href="/github" className="flex items-center justify-center gap-1 text-[11px] font-semibold text-violet-400 hover:text-violet-300 mt-2 pt-3 border-t border-white/[0.05] transition-colors">
                 View All Pipelines <ArrowUpRight size={12} />
               </Link>
             </div>
@@ -259,7 +259,7 @@ function MetricCard({ title, value, icon, color, alert = false, pulse = false })
 
 function PlatformCard({ title, desc, icon, color, isConnected, stats, href }) {
   const colorStyles = {
-    sky:    { text: "#38bdf8", bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.2)",  hoverBorder: "rgba(56,189,248,0.35)"  },
+    sky:    { text: "#3b82f6", bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.2)",  hoverBorder: "rgba(59,130,246,0.35)"  },
     amber:  { text: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)",  hoverBorder: "rgba(245,158,11,0.35)"  },
     violet: { text: "#a78bfa", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.2)", hoverBorder: "rgba(167,139,250,0.35)" },
   };
@@ -355,10 +355,10 @@ function CostMetricCard({ costData }) {
       role="region" 
       aria-label={`Cloud Cost MTD: ${isPermReq ? "Unavailable" : sub.month_to_date_actual}`}
       className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
-      style={{ border: "1px solid rgba(56,189,248,0.15)", boxShadow: "0 0 20px rgba(56,189,248,0.05)" }}
+      style={{ border: "1px solid rgba(139,92,246,0.15)", boxShadow: "0 0 20px rgba(139,92,246,0.03)" }}
     >
       <div className="flex justify-between items-start mb-3">
-        <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
+        <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400">
           <DollarSign size={16} />
         </div>
         {isPermReq

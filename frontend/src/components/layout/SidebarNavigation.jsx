@@ -20,8 +20,8 @@ const LOGO = (
     <circle cx="14" cy="14" r="1.5" fill="white" />
     <defs>
       <linearGradient id="lg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#0ea5e9"/>
-        <stop offset="0.5" stopColor="#6366f1"/>
+        <stop stopColor="#c084fc"/>
+        <stop offset="0.5" stopColor="#a78bfa"/>
         <stop offset="1" stopColor="#8b5cf6"/>
       </linearGradient>
     </defs>
@@ -95,7 +95,7 @@ export default function SidebarNavigation() {
       }}
     >
       {/* Top glow strip */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/50 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent pointer-events-none" />
 
       {/* Logo header */}
       <div className={`flex items-center gap-3 p-4 shrink-0 ${isCollapsed ? "justify-center" : ""}`}>
@@ -103,7 +103,7 @@ export default function SidebarNavigation() {
         {!isCollapsed && (
           <div className="min-w-0 flex-1">
             <h1 className="font-bold text-[13px] tracking-tight leading-none text-white">ResolveOps AI</h1>
-            <p className="text-[11px] text-sky-400/80 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
+            <p className="text-[11px] text-violet-400/80 mt-0.5 uppercase tracking-[0.15em] font-semibold">Command Center</p>
           </div>
         )}
         {!isCollapsed && (
@@ -123,7 +123,7 @@ export default function SidebarNavigation() {
         <div className="px-2.5 mb-2 flex justify-center shrink-0">
           <button
             onClick={toggleCollapse}
-            className="w-full flex justify-center items-center py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-sky-400 rounded-lg border border-white/5 transition-colors cursor-pointer"
+            className="w-full flex justify-center items-center py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-violet-400 rounded-lg border border-white/5 transition-colors cursor-pointer"
             title="Expand Sidebar"
             aria-label="Expand Sidebar"
           >
@@ -153,7 +153,7 @@ export default function SidebarNavigation() {
               >
                 <Icon
                   size={17}
-                  className={`shrink-0 transition-colors ${isActive ? "text-sky-400" : "text-slate-400 group-hover:text-slate-200"}`}
+                  className={`shrink-0 transition-colors ${isActive ? "text-violet-400" : "text-slate-400 group-hover:text-slate-200"}`}
                 />
                 {!isCollapsed && (
                   <span className="font-medium text-[13px] whitespace-nowrap tracking-tight">
@@ -161,7 +161,7 @@ export default function SidebarNavigation() {
                   </span>
                 )}
                 {!isCollapsed && isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400 pulse-dot" />
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 pulse-dot" />
                 )}
               </div>
             </Link>
@@ -189,7 +189,7 @@ export default function SidebarNavigation() {
       </div>
 
       {/* Bottom glow strip */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/30 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent pointer-events-none" />
     </aside>
   );
 }

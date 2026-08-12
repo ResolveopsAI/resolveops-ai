@@ -57,21 +57,21 @@ export default function DashboardLayout({ children }) {
             <div className="flex items-center gap-1.5 text-sm text-slate-400 font-medium">
               <span>Platform</span>
               <ChevronRight size={12} className="text-slate-600" />
-              <span className="text-sky-400 font-semibold">{getPageTitle(pathname)}</span>
+              <span className="text-violet-400 font-semibold">{getPageTitle(pathname)}</span>
             </div>
           </div>
 
           {/* Right Header Status & Top Logout Button */}
           <div className="flex items-center gap-3">
             {/* Live Telemetry Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-mono">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Telemetry Active</span>
             </div>
 
             {/* Role Pill (non-clickable) */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.07] text-xs font-medium">
-              <User size={13} className="text-sky-400" />
+              <User size={13} className="text-violet-400" />
               <span className="text-slate-300 capitalize">{userRole}</span>
             </div>
 

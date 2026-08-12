@@ -267,7 +267,7 @@ function AwsResourceInventory({ resources }) {
       {/* Table Header Controls */}
       <div className="p-5 border-b border-white/[0.08] flex flex-col md:flex-row gap-4 justify-between items-center bg-[#0d1424]/90 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400">
+          <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
             <Layers className="w-5 h-5" />
           </div>
           <div>
@@ -280,12 +280,12 @@ function AwsResourceInventory({ resources }) {
           <input 
             type="text" 
             placeholder="Search resources by name or ID..." 
-            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500/50 flex-1 md:w-72 transition-colors placeholder:text-slate-500"
+            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500/50 flex-1 md:w-72 transition-colors placeholder:text-slate-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select 
-            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500/50 transition-colors cursor-pointer"
+            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
@@ -328,11 +328,11 @@ function AwsResourceInventory({ resources }) {
               const isEc2 = rawType.toLowerCase().includes("ec2") || rawType.toLowerCase().includes("instance");
               const isRds = rawType.toLowerCase().includes("rds") || rawType.toLowerCase().includes("db");
 
-              const typeBadgeStyle = isVpc ? "bg-sky-500/15 text-sky-300 border-sky-500/30"
-                : isSubnet ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+              const typeBadgeStyle = isVpc ? "bg-blue-500/15 text-blue-300 border-blue-500/30"
+                : isSubnet ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
                 : isSg ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
                 : isEc2 ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                : isRds ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+                : isRds ? "bg-violet-500/15 text-violet-300 border-violet-500/30"
                 : "bg-slate-800 text-slate-300 border-slate-700";
 
               const statusLower = (res.status || "").toLowerCase();
@@ -380,7 +380,7 @@ function AwsResourceInventory({ resources }) {
                   {/* Features */}
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-1">
-                      <span title="Sub-resources enabled" className="w-5 h-5 flex items-center justify-center rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] font-bold">S</span>
+                      <span title="Sub-resources enabled" className="w-5 h-5 flex items-center justify-center rounded-md bg-violet-500/10 text-violet-400 border border-violet-500/20 text-[10px] font-bold">S</span>
                       {rawType.toLowerCase().includes("ec2") && (
                         <span title="Runtime workloads active" className="w-5 h-5 flex items-center justify-center rounded-md bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 text-[10px] font-bold">R</span>
                       )}
@@ -426,7 +426,7 @@ function AwsResourceInventory({ resources }) {
                   <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     <a 
                       href={`/aws/resource/${encodeURIComponent(res.id)}`} 
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 text-xs font-semibold border border-sky-500/20 transition-all cursor-pointer group-hover:border-sky-500/40"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs font-semibold border border-amber-500/20 transition-all cursor-pointer group-hover:border-amber-500/40"
                     >
                       <span>View</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

@@ -232,10 +232,10 @@ export default function GitHubSyncHub() {
       <DashboardLayout>
         <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
           <div className="relative">
-            <div className="w-16 h-16 rounded-full border border-sky-500/20 flex items-center justify-center">
-              <Activity className="text-sky-400 w-7 h-7 animate-spin" />
+            <div className="w-16 h-16 rounded-full border border-violet-500/20 flex items-center justify-center">
+              <Activity className="text-violet-400 w-7 h-7 animate-spin" />
             </div>
-            <div className="absolute inset-0 rounded-full bg-sky-500/10 blur-xl animate-pulse" />
+            <div className="absolute inset-0 rounded-full bg-violet-500/10 blur-xl animate-pulse" />
           </div>
           <div className="text-center">
             <p className="text-slate-200 font-semibold text-sm">
@@ -277,7 +277,7 @@ export default function GitHubSyncHub() {
   const activeArray = getActiveArray();
 
   const selectCls = `bg-[#0d1424] text-slate-200 border border-white/[0.08] rounded-xl px-3.5 py-2
-    text-sm focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/25
+    text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/25
     transition-all duration-150 appearance-none cursor-pointer disabled:opacity-40`;
 
   return (
@@ -287,21 +287,21 @@ export default function GitHubSyncHub() {
         {/* ── Hero Header ── */}
         <div className="relative rounded-2xl overflow-hidden p-6 lg:p-8"
           style={{
-            background: "linear-gradient(135deg, #0d1a2d 0%, #0b1525 60%, #0d1220 100%)",
-            border: "1px solid rgba(56,189,248,0.12)",
-            boxShadow: "0 0 60px rgba(56,189,248,0.04), 0 4px 30px rgba(0,0,0,0.4)"
+            background: "linear-gradient(135deg, #100f24 0%, #090a16 60%, #05060f 100%)",
+            border: "1px solid rgba(139,92,246,0.12)",
+            boxShadow: "0 0 60px rgba(139,92,246,0.03), 0 4px 30px rgba(0,0,0,0.4)"
           }}>
           <div className="absolute inset-0 opacity-[0.025]"
             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,1) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
           <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none"
-            style={{ background: "rgba(56,189,248,0.04)" }} />
+            style={{ background: "rgba(167,139,250,0.04)" }} />
           <div className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)" }} />
+            style={{ background: "linear-gradient(90deg, transparent, rgba(167,139,250,0.3), transparent)" }} />
 
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
             <div>
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3"
-                style={{ background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)", color: "#38bdf8" }}>
+                style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", color: "#a78bfa" }}>
                 <GitBranch size={11} /> GitHub Sync Hub
               </div>
               <div className="flex items-center gap-3 mb-2">
@@ -319,7 +319,7 @@ export default function GitHubSyncHub() {
               {statusData && (
                 <p className="text-sm text-slate-400 flex items-center gap-2">
                   <User size={13} className="text-slate-500" />
-                  <span className="font-mono text-sky-400/80">{statusData.username || "GitHub User"}</span>
+                  <span className="font-mono text-violet-400/80">{statusData.username || "GitHub User"}</span>
                 </p>
               )}
               {errorMsg && (

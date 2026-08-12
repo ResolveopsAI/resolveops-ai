@@ -24,12 +24,12 @@ mermaid.initialize({
   themeVariables: {
     darkMode: true,
     background: "transparent",
-    primaryColor: "#1e1b4b",
+    primaryColor: "#150e28",
     primaryTextColor: "#ffffff",
-    primaryBorderColor: "#6366f1",
-    lineColor: "#818cf8",
-    secondaryColor: "#0f172a",
-    tertiaryColor: "#1e293b",
+    primaryBorderColor: "#8b5cf6",
+    lineColor: "#a78bfa",
+    secondaryColor: "#080c18",
+    tertiaryColor: "#12182c",
     nodeTextColor: "#ffffff",
     textColor: "#ffffff",
   },
@@ -72,8 +72,8 @@ function injectSVGStyles(rawSvg) {
     .mermaid-svg-container svg .node circle,
     .mermaid-svg-container svg rect.label-container,
     .mermaid-svg-container svg .label-container {
-      fill: #1e1b4b !important;
-      stroke: #6366f1 !important;
+      fill: #150e28 !important;
+      stroke: #8b5cf6 !important;
       stroke-width: 2px !important;
       opacity: 1 !important;
       visibility: visible !important;
@@ -81,9 +81,9 @@ function injectSVGStyles(rawSvg) {
     .mermaid-svg-container svg .cluster rect,
     .mermaid-svg-container svg g.cluster rect,
     .mermaid-svg-container svg g.cluster > rect {
-      fill: #0f172a !important;
+      fill: #080c18 !important;
       fill-opacity: 0.8 !important;
-      stroke: #334155 !important;
+      stroke: #1e293b !important;
       stroke-width: 1.5px !important;
       opacity: 1 !important;
       visibility: visible !important;
@@ -107,14 +107,14 @@ function injectSVGStyles(rawSvg) {
     .mermaid-svg-container svg .flowchart-link,
     .mermaid-svg-container svg path.path,
     .mermaid-svg-container svg .link {
-      stroke: #818cf8 !important;
+      stroke: #a78bfa !important;
       stroke-width: 2px !important;
       opacity: 1 !important;
       visibility: visible !important;
     }
     .mermaid-svg-container svg .edgeLabel rect {
       fill: #090d16 !important;
-      stroke: #374151 !important;
+      stroke: #1f2937 !important;
       opacity: 1 !important;
     }
   </style>`;
@@ -376,7 +376,7 @@ function VisualResponseBlock({ data, onEdit }) {
             <div className="space-y-3 mt-2">
               {data.sections.map((section, i) => (
                 <div key={i} className="p-3 rounded-xl bg-white/3 border border-white/8">
-                  <p className="text-[11px] text-indigo-400 uppercase tracking-wider font-semibold mb-1.5">
+                  <p className="text-[11px] text-violet-400 uppercase tracking-wider font-semibold mb-1.5">
                     {section.heading}
                   </p>
                   <p className="text-xs text-slate-300 leading-relaxed">{section.content}</p>
@@ -389,8 +389,8 @@ function VisualResponseBlock({ data, onEdit }) {
 
       {/* Key takeaway */}
       {data.key_takeaway && (
-        <div className="p-3 rounded-xl bg-indigo-500/8 border border-indigo-500/20 mt-2">
-          <p className="text-[10px] text-indigo-400 uppercase tracking-wider font-semibold mb-1">
+        <div className="p-3 rounded-xl bg-violet-500/8 border border-violet-500/20 mt-2">
+          <p className="text-[10px] text-violet-400 uppercase tracking-wider font-semibold mb-1">
             Key Takeaway
           </p>
           <p className="text-xs text-slate-200 leading-relaxed">{data.key_takeaway}</p>

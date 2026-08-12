@@ -63,8 +63,17 @@ export default function SuggestionsHub() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="min-h-[70vh] flex flex-col items-center justify-center">
-          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-[70vh] flex flex-col items-center justify-center gap-5">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border border-violet-500/20 flex items-center justify-center">
+              <Lightbulb className="text-violet-400 w-7 h-7 animate-pulse" />
+            </div>
+            <div className="absolute inset-0 rounded-full bg-violet-500/10 blur-xl animate-pulse" />
+          </div>
+          <div className="text-center">
+            <p className="text-slate-200 font-semibold text-sm">Gathering Recommendations</p>
+            <p className="text-slate-500 text-xs font-mono mt-1 tracking-wider">RETRIEVING MCP DATA...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -103,7 +112,7 @@ export default function SuggestionsHub() {
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono">[{item.evidence_source.toUpperCase()}]</span>
                     <span className="text-[10px] text-slate-600">·</span>
-                    <span className="text-xs text-indigo-400 font-medium">{item.service}</span>
+                    <span className="text-xs text-violet-400 font-medium">{item.service}</span>
                   </div>
                   <h3 className="text-base font-semibold text-white">{item.title}</h3>
                 </div>

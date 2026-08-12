@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ShieldCheck, Search, Filter, RefreshCw, Eye, Lock, Hash, Calendar, CheckCircle2, XCircle } from "lucide-react";
 import { fetchApi } from "@/lib/api";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function AuditPage() {
   const [auditLogs, setAuditLogs] = useState([]);
@@ -41,7 +42,8 @@ export default function AuditPage() {
   }, [page]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <DashboardLayout>
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
       
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
@@ -96,7 +98,7 @@ export default function AuditPage() {
 
         <button
           onClick={loadAuditLogs}
-          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors"
+          className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-colors"
         >
           Apply Filters
         </button>
@@ -130,9 +132,9 @@ export default function AuditPage() {
                     <td className="p-4 font-mono text-slate-400 whitespace-nowrap">
                       {log.timestamp ? new Date(log.timestamp).toLocaleString() : "N/A"}
                     </td>
-                    <td className="p-4">
+                     <td className="p-4">
                       <div className="font-medium text-white">{log.actor_email || "System"}</div>
-                      <div className="text-[10px] text-indigo-400 capitalize">{log.actor_role || "system"}</div>
+                      <div className="text-[10px] text-violet-400 capitalize">{log.actor_role || "system"}</div>
                     </td>
                     <td className="p-4 font-mono text-amber-300 font-bold">{log.action}</td>
                     <td className="p-4 font-mono text-slate-300">
@@ -149,7 +151,7 @@ export default function AuditPage() {
                     <td className="p-4 text-right">
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-indigo-300 transition-colors"
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-violet-300 transition-colors"
                       >
                         <Eye size={14} />
                       </button>
@@ -190,7 +192,7 @@ export default function AuditPage() {
           <div className="w-full max-w-2xl bg-[#090d16] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Hash size={18} className="text-indigo-400" /> Audit Event Details
+                <Hash size={18} className="text-violet-400" /> Audit Event Details
               </h3>
               <button
                 onClick={() => setSelectedLog(null)}
@@ -214,7 +216,7 @@ export default function AuditPage() {
 
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                 <span className="text-slate-500 uppercase text-[10px]">Tamper Evidence (SHA-256 Chain)</span>
-                <p className="font-mono text-indigo-300 mt-1 break-all">Event Hash: {selectedLog.event_hash}</p>
+                <p className="font-mono text-violet-300 mt-1 break-all">Event Hash: {selectedLog.event_hash}</p>
                 <p className="font-mono text-slate-500 mt-1 break-all">Prev Hash: {selectedLog.previous_event_hash}</p>
               </div>
 
@@ -228,6 +230,7 @@ export default function AuditPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

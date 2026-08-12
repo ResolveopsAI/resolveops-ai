@@ -75,8 +75,8 @@ export default function AzureHub() {
       <DashboardLayout>
         <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
           <div className="relative">
-            <div className="absolute inset-0 bg-sky-500 blur-xl opacity-50 rounded-full animate-pulse"></div>
-            <Activity className="animate-spin text-sky-400 w-12 h-12 relative z-10" />
+            <div className="absolute inset-0 bg-blue-500/10 blur-xl opacity-50 rounded-full animate-pulse"></div>
+            <Activity className="animate-spin text-blue-400 w-12 h-12 relative z-10" />
           </div>
           <p className="text-slate-400 font-mono text-sm tracking-widest uppercase">Syncing Azure Environment...</p>
         </div>
@@ -100,12 +100,12 @@ export default function AzureHub() {
         
         {/* Header */}
         <div className="relative rounded-3xl overflow-hidden glass-panel border border-slate-800/80 p-8 lg:p-10">
-          <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-sky-600/10 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-blue-600/10 rounded-full blur-[100px] -mr-40 -mt-40 pointer-events-none"></div>
           
           <div className="relative z-10 flex justify-between items-end">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-wider rounded-full border border-sky-500/20 mb-4">
-                <Cloud size={12} className="text-sky-400" /> Azure Intelligence
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider rounded-full border border-blue-500/20 mb-4">
+                <Cloud size={12} className="text-blue-400" /> Azure Intelligence
               </div>
               <h2 className="text-3xl font-bold tracking-wide text-white mb-2">
                 Azure Platform Hub
@@ -164,10 +164,10 @@ export default function AzureHub() {
               </>
             )}
           </div>
-          <div className="glass-panel border border-slate-800 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group hover:border-sky-500/30 transition-all cursor-default">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-sky-500/20 duration-500"></div>
+          <div className="glass-panel border border-slate-800 rounded-2xl p-6 flex flex-col justify-center relative overflow-hidden group hover:border-blue-500/30 transition-all cursor-default">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition-all group-hover:bg-blue-500/20 duration-500"></div>
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-              <Cloud size={14} className="text-sky-500" /> Total Resources
+              <Cloud size={14} className="text-blue-500" /> Total Resources
             </span>
             <div className="text-4xl font-black text-white tracking-tight">{resources.length}</div>
           </div>
@@ -196,7 +196,7 @@ export default function AzureHub() {
           <div className="glass-panel rounded-2xl border border-slate-800/80 overflow-hidden flex flex-col">
             <div className="p-5 border-b border-slate-800 bg-black/30 flex justify-between items-center">
               <h3 className="text-sm font-bold tracking-wider text-white uppercase flex items-center gap-2">
-                <Server size={16} className="text-sky-400" /> Discovered Resources
+                <Server size={16} className="text-blue-400" /> Discovered Resources
               </h3>
             </div>
             
@@ -214,7 +214,7 @@ export default function AzureHub() {
                     if (!acc[rg]) acc[rg] = [];
                     acc[rg].push(r);
                     return acc;
-                  }, {});
+                    }, {});
                   
                   return Object.entries(grouped).map(([rgName, rgResources], idx) => (
                     <div key={idx} className="p-4">
@@ -228,15 +228,15 @@ export default function AzureHub() {
                           const rStatus = (r.status || 'unknown').toLowerCase();
                           
                           return (
-                            <Link href={`/azure/resource/${encodeURIComponent(r.id)}`} key={i} className="p-3 bg-white/[0.02] rounded-xl flex justify-between items-center hover:bg-white/[0.05] transition-colors group cursor-pointer border border-transparent hover:border-sky-500/30 block">
+                            <Link href={`/azure/resource/${encodeURIComponent(r.id)}`} key={i} className="p-3 bg-white/[0.02] rounded-xl flex justify-between items-center hover:bg-white/[0.05] transition-colors group cursor-pointer border border-transparent hover:border-blue-500/30 block">
                               <div className="flex items-start gap-3 overflow-hidden pr-4">
-                                <div className="p-2 bg-slate-800/80 rounded border border-slate-700/50 text-sky-400 shrink-0 mt-0.5 group-hover:bg-sky-500/10 group-hover:border-sky-500/20 group-hover:text-sky-300 transition-colors shadow-sm">
+                                <div className="p-2 bg-slate-800/80 rounded border border-slate-700/50 text-blue-400 shrink-0 mt-0.5 group-hover:bg-blue-500/10 group-hover:border-blue-500/20 group-hover:text-blue-300 transition-colors shadow-sm">
                                   {getResourceIcon(r.type)}
                                 </div>
                                 <div className="truncate flex flex-col justify-center">
                                   <h4 className="font-semibold text-xs text-slate-200 truncate group-hover:text-white transition-colors" title={r.name}>{r.name}</h4>
                                   <div className="flex items-center space-x-2 mt-1">
-                                    <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-800/80 text-sky-200/70 border border-slate-700/50 uppercase tracking-widest">{formattedType}</span>
+                                    <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-slate-800/80 text-blue-200/70 border border-slate-700/50 uppercase tracking-widest">{formattedType}</span>
                                     <span className="text-[9px] text-slate-500 font-mono flex items-center gap-1 before:content-['•'] before:text-slate-700 before:mr-1">{r.region}</span>
                                   </div>
                                 </div>
@@ -351,14 +351,14 @@ export default function AzureHub() {
       <Dialog open={showArchModal} onOpenChange={setShowArchModal}>
         <DialogContent className="sm:max-w-4xl bg-[#0B0C10] border-slate-800 text-slate-200">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-sky-400">
+            <DialogTitle className="flex items-center gap-2 text-blue-400">
               <Network size={20} /> Auto-Generated Architecture Diagram
             </DialogTitle>
           </DialogHeader>
           <div className="h-[60vh] w-full">
             {generatingArch ? (
               <div className="h-full flex flex-col items-center justify-center space-y-4">
-                <Activity className="animate-spin text-sky-500 w-10 h-10" />
+                <Activity className="animate-spin text-blue-500 w-10 h-10" />
                 <p className="text-slate-400 font-mono text-sm animate-pulse">Mapping relationships...</p>
               </div>
             ) : archCode ? (
