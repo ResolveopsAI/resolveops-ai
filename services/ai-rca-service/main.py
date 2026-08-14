@@ -4,6 +4,8 @@ import os
 import re
 import json
 from typing import List, Dict, Optional
+from uuid import uuid4
+from app.schemas.investigation import ChatRequest
 from ai_rca_service import PredictiveEngine
 
 app = FastAPI(title="ai-rca-service")
@@ -214,3 +216,37 @@ Generate your analysis in valid JSON format with the following keys:
             raise HTTPException(status_code=500, detail=f"Amazon Bedrock error: {str(e)}")
             
     raise HTTPException(status_code=500, detail="No valid AI provider configured")
+
+
+@app.post("/api/v1/rca/chat")
+def chat_rca(req: ChatRequest):
+    """Simple chat adapter that forwards free-text chat to the existing analyze flow.
+
+    Returns a JSON structure the API gateway expects: `status`, `answer`, `execution`,
+    and `execution_path` so gateway forwarding succeeds.
+    """
+    try:
+        # Reuse analyze logic by creating a minimal AnalyzeRequest with the message as logs
+        analyze_req = AnalyzeRequest(source="chat", context=req.message, logs=req.message)
+        result = analyze_rca(analyze_req)
+
+        # If analyze_rca raised an HTTPException it will propagate; otherwise map response
+        if isinstance(result, dict) and result.get("status") == "success":
+            analysis = result.get("analysis", {})
+            answer = analysis.get("summary") or analysis.get("probable_root_cause") or ""
+            return {
+                "status": "success",
+                "answer": answer,
+                "execution": {"requestId": str(uuid4())},
+                "execution_path": "ai_rca_chat",
+                "provider": os.getenv("AI_PROVIDER", "openai"),
+                "model": os.getenv("OPENAI_MODEL_NAME", os.getenv("GROQ_MODEL_NAME", "unknown")),
+            }
+
+        # Fallback: return a friendly error structure
+        return {"status": "error", "error": {"message": "AI analysis temporarily unavailable"}}
+
+    except HTTPException as he:
+        return {"status": "error", "error": {"message": str(he.detail)}}
+    except Exception as e:
+        return {"status": "error", "error": {"message": "Internal AI error"}}
