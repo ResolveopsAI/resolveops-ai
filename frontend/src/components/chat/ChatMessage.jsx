@@ -128,51 +128,17 @@ function injectSVGStyles(rawSvg) {
 
 // ── Mermaid code sanitizer ────────────────────────────────────────────────────
 function formatAndSanitizeMermaidCode(code) {
-      <div className="px-4 py-2 bg-slate-950/80 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
-  let text = code.trim();
+  let text = (code || "").trim();
 
   if (!text.includes("\n") || text.split("\n").length < 3) {
     text = text
-      .replace(/\s*(subgraph\s+[A-Za-z0-9_"\-[\]\s]+)/gi, "\n$1\n")
+      .replace(/\s*(subgraph\s+[A-Za-z0-9_"\-\[\]\s]+)/gi, "\n$1\n")
       .replace(/\s*(end)(?=\s|$)/gi, "\nend\n")
       .replace(/\s*(-->|->|-\.->|<-->)\s*/gi, " $1 ")
       .replace(/\]\s*([A-Za-z0-9_]+)\[/g, "]\n$1[")
       .replace(/("?\s*)([A-Za-z0-9_]+\[)/g, "$1\n$2");
   }
 
-          <button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(code || "");
-              } catch {}
-            }}
-            className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
-          >
-            <Copy size={12} />
-            <span className="text-xs">Copy Code</span>
-          </button>
-          <button
-            onClick={() => {
-              // download current SVG
-              const svgEl = containerRef.current?.querySelector("svg");
-              if (!svgEl) return;
-              const serializer = new XMLSerializer();
-              const source = serializer.serializeToString(svgEl);
-              const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "diagram.svg";
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              URL.revokeObjectURL(url);
-            }}
-            className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
-          >
-            <ChevronRight size={12} />
-            <span className="text-xs">Download SVG</span>
-          </button>
   text = text
     .replace(/-->\|([^|]+)\|>/g, "-->|$1|")
     .replace(/->\|([^|]+)\|>/g, "-->|$1|")
