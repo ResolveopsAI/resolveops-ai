@@ -295,48 +295,124 @@ Generate your analysis in valid JSON format with the following keys:
 
 @app.post("/api/v1/rca/chat")
 def chat_rca(req: ChatRequest):
-    """Simple chat adapter that forwards free-text chat to the existing analyze flow.
+    """Chat adapter with intent classification and routing.
 
-    Returns a JSON structure the API gateway expects: `status`, `answer`, `execution`,
-    and `execution_path` so gateway forwarding succeeds.
+    Intents supported:
+      - greeting: short salutations -> canned reply
+      - code_gen: Terraform/code generation -> code-generation flow
+      - rca: root-cause analysis -> if message contains log-like content invoke analyze_rca,
+             otherwise ask a clarifying question requesting logs/time-window/service
     """
-    try:
-        # Reuse analyze logic by creating a minimal AnalyzeRequest with the message as logs
-        analyze_req = AnalyzeRequest(source="chat", context=req.message, logs=req.message)
-        result = analyze_rca(analyze_req)
 
-        # If analyze_rca raised an HTTPException it will propagate; otherwise map response
-        if isinstance(result, dict) and result.get("status") == "success":
-            analysis = result.get("analysis", {})
-            summary = analysis.get("summary") or ""
-            probable = analysis.get("probable_root_cause") or ""
-            fixes = analysis.get("recommended_fix") or analysis.get("recommended_fix", []) or []
+    msg = (req.message or "").strip()
 
-            # Compose a readable assistant answer combining summary, probable cause and recommended fixes
-            parts = []
-            if summary:
-                parts.append(f"Summary: {summary}")
-            if probable:
-                parts.append(f"Probable root cause: {probable}")
-            if fixes and isinstance(fixes, list) and len(fixes) > 0:
-                fixes_text = "\n".join([f"- {f}" for f in fixes])
-                parts.append(f"Recommended fixes:\n{fixes_text}")
+    def classify_intent(text: str) -> str:
+        t = text.strip().lower()
+        if not t:
+            return "greeting"
+        # greetings or very short
+        if re.fullmatch(r"^(hi|hello|hey|yo|h[ie]llo)([!.]?|\s*)$", t) or len(t) < 4:
+            return "greeting"
+        # code generation / terraform keywords
+        code_kw = ["terraform", "tf", "vm", "virtual machine", "azure", "create a vm", "generate a terraform", "terraform script", "create a virtual machine"]
+        for kw in code_kw:
+            if kw in t:
+                return "code_gen"
+        # default to rca
+        return "rca"
 
-            answer_text = "\n\n".join(parts) if parts else (analysis.get("answer") or summary or "No analysis available.")
+    def looks_like_logs(text: str) -> bool:
+        # Heuristics: timestamps, ERROR/WARN, stack traces, multiple lines
+        if "error" in text.lower() or "exception" in text.lower() or "traceback" in text.lower():
+            return True
+        if re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", text):
+            return True
+        if "WARN" in text or "ERROR" in text:
+            return True
+        if "\n" in text and len(text.splitlines()) > 1:
+            return True
+        return False
 
-            return {
-                "status": "success",
-                "answer": answer_text,
-                "execution": {"requestId": str(uuid4())},
-                "execution_path": "ai_rca_chat",
-                "provider": os.getenv("AI_PROVIDER", "openai"),
-                "model": os.getenv("OPENAI_MODEL_NAME", os.getenv("GROQ_MODEL_NAME", os.getenv("OPENAI_MODEL", "unknown"))),
-            }
+    intent = classify_intent(msg)
 
-        # Fallback: return a friendly error structure
-        return {"status": "error", "error": {"message": "AI analysis temporarily unavailable"}}
+    # Greeting -> canned reply
+    if intent == "greeting":
+        return {
+            "status": "success",
+            "answer": "Hi — I can help with Root Cause Analysis, Terraform code generation, or operational guidance. What would you like me to do? (e.g., 'Analyze logs for service X' or 'Generate Terraform to create an Azure VM')",
+            "execution": {"requestId": str(uuid4())},
+            "execution_path": "greeting",
+            "provider": "assistant",
+            "model": "local",
+        }
 
-    except HTTPException as he:
-        return {"status": "error", "error": {"message": str(he.detail)}}
-    except Exception as e:
-        return {"status": "error", "error": {"message": "Internal AI error"}}
+    # Code generation -> return sample Terraform or call code-generation flow
+    if intent == "code_gen":
+        # If OpenAI-compatible configured, attempt generative response; otherwise return simple template
+        try:
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            openai_base = os.getenv("OPENAI_BASE_URL")
+            openai_model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME")
+            if openai_api_key and openai_model:
+                from langchain_openai import ChatOpenAI
+                from langchain_core.messages import SystemMessage, HumanMessage
+
+                chat = ChatOpenAI(api_key=openai_api_key, base_url=openai_base, model=openai_model, temperature=0.1)
+                prompt = (
+                    "You are a helpful assistant that generates Terraform HCL. "
+                    "Produce a minimal, runnable Terraform configuration to create an Azure virtual machine using the AzureRM provider. "
+                    "Return only the HCL code without commentary."
+                )
+                res = chat.invoke([SystemMessage(content=prompt), HumanMessage(content=msg)])
+                code = getattr(res, "content", str(res))
+                return {
+                    "status": "success",
+                    "answer": code,
+                    "execution": {"requestId": str(uuid4())},
+                    "execution_path": "code_gen",
+                    "provider": "openai",
+                    "model": openai_model,
+                }
+        except Exception:
+            # Fall back to a minimal Terraform template
+            template = (
+                'provider "azurerm" {\n  features {}\n}\n\nresource "azurerm_resource_group" "rg" {\n  name     = "example-rg"\n  location = "East US"\n}\n\nresource "azurerm_virtual_machine" "vm" {\n  name                  = "example-vm"\n  location              = azurerm_resource_group.rg.location\n  resource_group_name   = azurerm_resource_group.rg.name\n  network_interface_ids = []\n  vm_size               = "Standard_DS1_v2"\n\n  storage_os_disk {\n    name              = "osdisk"\n    caching           = "ReadWrite"\n    create_option     = "FromImage"\n    managed_disk_type = "Standard_LRS"\n  }\n\n  os_profile {\n    computer_name  = "hostname"\n    admin_username = "azureuser"\n    admin_password = "P@ssw0rd1234!"\n  }\n}\n'
+            )
+            return {"status": "success", "answer": template, "execution": {"requestId": str(uuid4())}, "execution_path": "code_gen", "provider": "local", "model": "template"}
+
+    # RCA intent
+    if intent == "rca":
+        # If input looks like logs, pass to analyze flow
+        if looks_like_logs(msg) and len(msg) > 30:
+            try:
+                analyze_req = AnalyzeRequest(source="chat", context=req.message, logs=req.message)
+                result = analyze_rca(analyze_req)
+                if isinstance(result, dict) and result.get("status") == "success":
+                    analysis = result.get("analysis", {})
+                    summary = analysis.get("summary") or ""
+                    probable = analysis.get("probable_root_cause") or ""
+                    fixes = analysis.get("recommended_fix") or []
+                    parts = []
+                    if summary:
+                        parts.append(f"Summary: {summary}")
+                    if probable:
+                        parts.append(f"Probable root cause: {probable}")
+                    if fixes:
+                        parts.append("Recommended fixes:\n" + "\n".join([f"- {f}" for f in fixes]))
+                    answer_text = "\n\n".join(parts) if parts else analysis.get("answer") or "No analysis available."
+                    return {"status": "success", "answer": answer_text, "execution": {"requestId": str(uuid4())}, "execution_path": "ai_rca_chat", "provider": os.getenv("AI_PROVIDER", "openai"), "model": os.getenv("OPENAI_MODEL", "unknown")}
+                return {"status": "error", "error": {"message": "AI analysis temporarily unavailable"}}
+            except HTTPException as he:
+                return {"status": "error", "error": {"message": str(he.detail)}}
+            except Exception:
+                return {"status": "error", "error": {"message": "Internal AI error"}}
+
+        # Ask clarifying question when logs are missing
+        return {
+            "status": "success",
+            "answer": "I can run root-cause analysis, but I need logs or more context. Please provide relevant log lines, the affected service name, and the approximate time window (e.g., last 30 minutes). Would you like to paste logs now?",
+            "execution": {"requestId": str(uuid4())},
+            "execution_path": "clarifying_question",
+            "provider": "assistant",
+            "model": "local",
+        }
