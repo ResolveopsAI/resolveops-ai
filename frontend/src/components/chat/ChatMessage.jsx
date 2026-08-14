@@ -17,9 +17,11 @@ mermaid.initialize({
   securityLevel: "strict",
   theme: "dark",
   flowchart: {
-    useMaxWidth: false,
-    htmlLabels: false,
-    curve: "basis",
+  useMaxWidth: true,
+  htmlLabels: false,
+  curve: "basis",
+  nodeSpacing: 48,
+  rankSpacing: 64,
   },
   themeVariables: {
     darkMode: true,
@@ -124,7 +126,7 @@ function injectSVGStyles(rawSvg) {
 
 // ── Mermaid code sanitizer ────────────────────────────────────────────────────
 function formatAndSanitizeMermaidCode(code) {
-  if (!code) return "";
+      <div className="px-4 py-2 bg-slate-950/80 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
   let text = code.trim();
 
   if (!text.includes("\n") || text.split("\n").length < 3) {
@@ -136,6 +138,39 @@ function formatAndSanitizeMermaidCode(code) {
       .replace(/("?\s*)([A-Za-z0-9_]+\[)/g, "$1\n$2");
   }
 
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(code || "");
+              } catch {}
+            }}
+            className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+          >
+            <Copy size={12} />
+            <span className="text-xs">Copy Code</span>
+          </button>
+          <button
+            onClick={() => {
+              // download current SVG
+              const svgEl = containerRef.current?.querySelector("svg");
+              if (!svgEl) return;
+              const serializer = new XMLSerializer();
+              const source = serializer.serializeToString(svgEl);
+              const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "diagram.svg";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+          >
+            <ChevronRight size={12} />
+            <span className="text-xs">Download SVG</span>
+          </button>
   text = text
     .replace(/-->\|([^|]+)\|>/g, "-->|$1|")
     .replace(/->\|([^|]+)\|>/g, "-->|$1|")
@@ -424,6 +459,34 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
+// ── CodeBlock with copy button ───────────────────────────────────────────────
+function CodeBlock({ language, value }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  return (
+    <div className="relative my-2">
+      <pre className="bg-[#020617] border border-white/10 rounded-xl p-3 overflow-x-auto font-mono text-xs text-slate-300">
+        <code className="text-xs font-mono text-slate-300">{value}</code>
+      </pre>
+      <button
+        onClick={copy}
+        className="absolute top-2 right-2 bg-white/5 hover:bg-white/8 text-slate-300 px-2 py-1 rounded text-xs flex items-center gap-2"
+      >
+        {copied ? <CheckCircle2 size={12} /> : <Copy size={12} />}
+        <span>{copied ? "Copied" : "Copy"}</span>
+      </button>
+    </div>
+  );
+}
+
 // ── ExecutionDetailsPanel ───────────────────────────────────────────────────
 function ExecutionDetailsPanel({ execution }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -549,13 +612,7 @@ export function MessageBubble({ msg, onRetry }) {
                     );
                   }
 
-                  return (
-                    <pre className="bg-[#020617] border border-white/10 rounded-xl p-3 overflow-x-auto font-mono text-xs text-slate-300 my-2">
-                      <code className="text-xs font-mono text-slate-300" {...props}>
-                        {children}
-                      </code>
-                    </pre>
-                  );
+                  return <CodeBlock language={language} value={codeString} />;
                 },
                 ul: ({ ...props }) => <ul className="list-disc pl-5 space-y-1 my-2" {...props} />,
                 ol: ({ ...props }) => <ol className="list-decimal pl-5 space-y-1 my-2" {...props} />,

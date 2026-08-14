@@ -73,12 +73,13 @@ export default function ConversationDrawer({
 
   const handleDelete = (e, sessionId) => {
     e.stopPropagation();
-    if (deletingId === sessionId) {
+    // Single-click delete with confirmation
+    const ok = window.confirm("Delete this conversation? This action cannot be undone.");
+    if (ok) {
       deleteSession(sessionId);
       setDeletingId(null);
-    } else {
-      setDeletingId(sessionId);
-      setTimeout(() => setDeletingId(null), 3000);
+      // notify other components to refresh
+      window.dispatchEvent(new Event("chat-updated"));
     }
   };
 

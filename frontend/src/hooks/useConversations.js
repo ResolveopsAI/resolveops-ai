@@ -37,6 +37,8 @@ export function useConversations(currentSessionId, onNewChat, onSessionSelect) {
       if (currentSessionId === sessionId) {
         onNewChat?.();
       }
+      // Notify other parts of the UI that conversations changed
+      window.dispatchEvent(new Event("chat-updated"));
     } catch (err) {
       console.error("Delete session failed:", err);
     }

@@ -89,8 +89,8 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* Scrollable Page Body */}
-        <main id="main-content" role="main" className="flex-1 p-5 overflow-y-auto min-w-0">
+        {/* Page Body - child handles internal scrolling to avoid double scrollbars */}
+        <main id="main-content" role="main" className="flex-1 p-5 overflow-hidden min-w-0">
           {children}
         </main>
       </div>
