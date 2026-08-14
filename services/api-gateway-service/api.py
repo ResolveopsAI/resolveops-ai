@@ -111,6 +111,7 @@ class ChatRequest(BaseModel):
     message: str
     image_base64: Optional[str] = None
     session_id: Optional[str] = None
+    history: Optional[list] = None  # Optional client-side history for multi-turn context
 
 class ChatResponse(BaseModel):
     answer: str
@@ -413,6 +414,18 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
     # ── Path A: Forward to AI-RCA service ────────────────────────────────────
     if _AI_RCA_CHAT_ENABLED:
         try:
+            # Fetch recent conversation history for multi-turn context
+            conversation_history = []
+            try:
+                recent_msgs = get_chat_history(tenant_id=tenant_id, session_id=session_id, limit=10)
+                for m in recent_msgs:
+                    role = m.get("role", "user")
+                    content = m.get("content", "")
+                    if role in ("user", "assistant") and content:
+                        conversation_history.append({"role": role, "content": content})
+            except Exception:
+                pass  # History fetch is best-effort
+
             async with httpx.AsyncClient(timeout=90) as client:
                 rca_resp = await client.post(
                     f"{_AI_RCA_SERVICE_URL}/api/v1/rca/chat",
@@ -422,6 +435,7 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
                         "tenant_id": tenant_id,
                         "tenant_email": tenant_email,
                         "image_base64": request.image_base64,
+                        "history": conversation_history,
                     },
                 )
 

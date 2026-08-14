@@ -382,14 +382,19 @@ def update_user_integrations(email: str, integrations: dict) -> bool:
     db = SessionLocal()
     if not db: return False
     try:
+        from sqlalchemy.orm.attributes import flag_modified
         instance = db.query(User).filter_by(email=email).first()
         if instance:
-            instance.integrations = integrations
+            # Assign a fresh copy — prevents reference aliasing issues
+            instance.integrations = dict(integrations)
+            # Explicitly mark as modified — SQLAlchemy may not detect JSON mutations
+            flag_modified(instance, "integrations")
             db.commit()
             return True
         return False
     finally:
         db.close()
+
 
 def get_user_integrations(email: str) -> dict:
     db = SessionLocal()

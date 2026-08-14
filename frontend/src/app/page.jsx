@@ -13,6 +13,7 @@ import Link from "next/link";
 
 export default function GlobalDashboard() {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [integrations, setIntegrations] = useState({});
   const [stats, setStats] = useState({
@@ -21,12 +22,6 @@ export default function GlobalDashboard() {
     failures: 0, health: "100%"
   });
   const [deployments, setDeployments] = useState([]);
-
-  useEffect(() => {
-    if (getUserRole() !== "admin") {
-      router.push("/chat");
-    }
-  }, [router]);
 
   const fetchData = () => {
     setLoading(true);
@@ -54,9 +49,21 @@ export default function GlobalDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
-    if (!token) { router.push("/login"); return; }
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    const role = getUserRole();
+    if (role !== "admin") {
+      router.push("/chat");
+      return;
+    }
+    setAuthChecked(true);
     fetchData();
   }, [router]);
+
+  // Don't render anything until auth is confirmed — prevents flash of dashboard before redirect
+  if (!authChecked) return null;
 
   if (loading) {
     return (
