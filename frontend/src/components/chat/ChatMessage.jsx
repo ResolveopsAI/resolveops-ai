@@ -131,6 +131,16 @@ function injectSVGStyles(rawSvg) {
 function formatAndSanitizeMermaidCode(code) {
   let text = (code || "").trim();
 
+  // Normalize common unicode characters the LLM may emit
+  text = text
+    .replace(/[\u2012\u2013\u2014\u2015]/g, "-") // various dashes -> hyphen
+    .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'") // single quotes
+    .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"') // double quotes
+    .replace(/→|⟶|⟶/g, "->")
+    .replace(/—>|–>|−>/g, "-->")
+    .replace(/←|<–|<—/g, "<-")
+    .replace(/<-->/g, "<-->");
+
   if (!text.includes("\n") || text.split("\n").length < 3) {
     text = text
       .replace(/\s*(subgraph\s+[A-Za-z0-9_"\-\[\]\s]+)/gi, "\n$1\n")
