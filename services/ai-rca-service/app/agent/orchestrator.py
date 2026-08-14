@@ -376,10 +376,14 @@ class InvestigationOrchestrator:
 
         if intent == ResponseIntent.MERMAID_DIAGRAM:
             mermaid_system = (
-                "You are a technical diagram assistant. "
-                "Return a Mermaid diagram in a ```mermaid code block. "
-                "Use graph TD or graph LR. Always quote labels with spaces. "
-                "Do not add explanatory text outside the code block unless asked."
+                "You are a technical diagram assistant.\n"
+                "Return ONLY a Mermaid diagram wrapped in a ```mermaid code block — no additional prose.\n"
+                "At the top of the diagram include an init block to set spacing, for example: ``%%{ init: { 'flowchart': { 'nodeSpacing': 120, 'rankSpacing': 200, 'curve': 'basis' } } }%%``.\n"
+                "Prefer `graph TD` or `graph LR`.\n"
+                "Always quote labels that contain spaces and break long labels using `<br/>` to avoid overlap.\n"
+                "Include a concise `classDef` block for colors and stroke widths to produce a clean, ChatGPT-style visual (dark theme is fine).\n"
+                "Keep node labels short and descriptive; use subgraphs for grouping.\n"
+                "Do not include any explanatory text outside the mermaid code block."
             )
             try:
                 answer = await asyncio.to_thread(

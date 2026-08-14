@@ -17,11 +17,11 @@ mermaid.initialize({
   securityLevel: "strict",
   theme: "dark",
   flowchart: {
-  useMaxWidth: true,
-  htmlLabels: false,
-  curve: "basis",
-  nodeSpacing: 48,
-  rankSpacing: 64,
+    useMaxWidth: true,
+    htmlLabels: false,
+    curve: "basis",
+    nodeSpacing: 96,
+    rankSpacing: 160,
   },
   themeVariables: {
     darkMode: true,
@@ -34,6 +34,8 @@ mermaid.initialize({
     tertiaryColor: "#12182c",
     nodeTextColor: "#ffffff",
     textColor: "#ffffff",
+    fontSize: "14px",
+    fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
   },
 });
 
@@ -242,6 +244,8 @@ function MermaidDiagram({ code }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [pngScale, setPngScale] = useState(3);
+  const [pngBackground, setPngBackground] = useState("transparent");
   const containerRef = useRef(null);
   const uniqueIdRef = useRef(`mermaid-${Math.random().toString(36).substring(2, 9)}`);
 
@@ -339,6 +343,28 @@ function MermaidDiagram({ code }) {
         </button>
       </div>
       <div className="px-4 py-2 bg-slate-950/80 border-t border-white/5 flex items-center justify-end gap-2 text-[11px] text-slate-500">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 flex items-center gap-2">
+            <span className="text-[11px]">Export:</span>
+            <select
+              value={pngScale}
+              onChange={(e) => setPngScale(Number(e.target.value))}
+              className="bg-black/60 text-xs text-slate-300 rounded px-2 py-1 border border-white/10"
+            >
+              <option value={2}>2x</option>
+              <option value={3}>3x</option>
+              <option value={4}>4x</option>
+            </select>
+            <select
+              value={pngBackground}
+              onChange={(e) => setPngBackground(e.target.value)}
+              className="bg-black/60 text-xs text-slate-300 rounded px-2 py-1 border border-white/10"
+            >
+              <option value="transparent">Transparent</option>
+              <option value="white">White</option>
+            </select>
+          </label>
+        </div>
         <button
           onClick={async () => {
             try {
@@ -383,7 +409,7 @@ function MermaidDiagram({ code }) {
               let height = vb && vb.height ? vb.height : clone.getAttribute("height") || clone.clientHeight || 800;
               width = Number(width) || 1200;
               height = Number(height) || 800;
-              const scale = 3; // high-res multiplier
+              const scale = Number(pngScale) || 3; // high-res multiplier
               const serializer = new XMLSerializer();
               const svgString = serializer.serializeToString(clone);
               const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
@@ -395,7 +421,7 @@ function MermaidDiagram({ code }) {
                   canvas.width = Math.ceil(width * scale);
                   canvas.height = Math.ceil(height * scale);
                   const ctx = canvas.getContext("2d");
-                  ctx.fillStyle = "transparent";
+                  ctx.fillStyle = pngBackground === "white" ? "#ffffff" : "rgba(0,0,0,0)";
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                   canvas.toBlob((blob) => {
