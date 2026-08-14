@@ -17,6 +17,34 @@ engine = PredictiveEngine()
 def health_check():
     return {"status": "healthy", "service": "ai-rca-service"}
 
+
+@app.get("/api/v1/ai/provider-status")
+def provider_status():
+    """Return a lightweight provider availability summary for the gateway."""
+    provider = os.getenv("AI_PROVIDER", "openai").lower()
+    status = "misconfigured"
+    details = {}
+    if provider == "groq":
+        if os.getenv("GROQ_API_KEY"):
+            status = "available"
+        else:
+            status = "misconfigured"
+    elif provider == "openai":
+        if os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_MODEL"):
+            status = "available"
+        else:
+            status = "misconfigured"
+    elif provider == "bedrock":
+        # bedrock requires BEDROCK_MODEL_ID and AWS credentials available in environment/instance role
+        if os.getenv("BEDROCK_MODEL_ID"):
+            status = "available"
+        else:
+            status = "misconfigured"
+    else:
+        status = "unknown"
+
+    return {"status": status, "provider": provider, "details": details}
+
 class SelfHealingRCARequest(BaseModel):
     service: str
     failure_type: str
@@ -127,6 +155,53 @@ Generate your analysis in valid JSON format with the following keys:
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Groq error: {str(e)}")
+    elif ai_provider == "openai":
+        # OpenAI-compatible endpoint (e.g., Groq via OpenAI API compatibility)
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        openai_base = os.getenv("OPENAI_BASE_URL")
+        openai_model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME")
+
+        if not openai_api_key or not openai_model:
+            raise HTTPException(status_code=500, detail="OpenAI-compatible credentials not configured")
+
+        try:
+            from langchain_openai import ChatOpenAI
+            from langchain_core.messages import HumanMessage, SystemMessage
+
+            chat = ChatOpenAI(
+                api_key=openai_api_key,
+                base_url=openai_base,
+                model=openai_model,
+                temperature=0.1,
+            )
+
+            res = chat.invoke([
+                SystemMessage(content="You are a helpful AI that returns strictly valid JSON."),
+                HumanMessage(content=prompt)
+            ])
+
+            content = res.content
+            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+            if json_match:
+                content = json_match.group(1)
+            parsed = json.loads(content)
+
+            return {
+                "status": "success",
+                "analysis": {
+                    "status": "ai_generated",
+                    "provider": "openai",
+                    "model": openai_model,
+                    "summary": parsed.get("summary", "Analysis"),
+                    "probable_root_cause": parsed.get("probable_root_cause", ""),
+                    "recommended_fix": parsed.get("recommended_fix", []),
+                    "evidence": parsed.get("evidence", []),
+                    "ai_provider_status": "available"
+                }
+            }
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
 
     elif ai_provider == "azure_foundry":
         # Use Azure AI Foundry
