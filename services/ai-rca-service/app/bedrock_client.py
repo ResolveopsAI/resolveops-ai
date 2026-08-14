@@ -1,3 +1,11 @@
+'''
+Original Bedrock client implementation (commented out).
+
+If you need to re-enable Bedrock later, uncomment this block and
+comment out the lightweight stub below.
+
+---- START ORIGINAL IMPLEMENTATION ----
+
 """
 AI-RCA Service — Amazon Bedrock client.
 
@@ -234,7 +242,16 @@ class BedrockClient:
             max_tokens=max_tokens,
             temperature=temperature,
         )
-        return response.choices[0].message.content or ""
+        # Extract content from OpenAI response object (safe paths)
+        try:
+            choice_msg = response.choices[0].message
+            return choice_msg.content or ""
+        except Exception:
+            # Fallbacks for alternative response shapes
+            try:
+                return response.choices[0].text or ""
+            except Exception:
+                return str(response)
 
     def converse_with_tools(
         self,
@@ -262,173 +279,20 @@ class BedrockClient:
         )
         
         try:
-            if provider == "bedrock":
-                return self._converse_bedrock(messages, system_prompt, tools, max_tokens, temperature, rid)
-            elif provider == "openai":
-                return self._converse_openai(messages, system_prompt, tools, max_tokens, temperature, rid)
-            else:
-                raise _SafeError(build_error_response(ErrorCode.AI_PROVIDER_CONFIGURATION_ERROR, rid))
-        except _SafeError:
-            raise
-        except Exception as exc:
-            code = classify_provider_exception(exc)
-            logger.error(
-                "Converse with tools failed",
-                extra={
-                    "request_id": rid,
-                    "provider": provider,
-                    "error_code": code,
-                    "exc_type": type(exc).__name__,
-                },
-            )
-            raise _SafeError(build_error_response(code, rid)) from exc
-
-    def _converse_bedrock(
-        self,
-        messages: List[Dict[str, Any]],
-        system_prompt: Optional[str],
-        tools: Optional[List[Dict[str, Any]]],
-        max_tokens: int,
-        temperature: float,
-        request_id: str,
-    ) -> Dict[str, Any]:
-        client = self._get_bedrock_client()
-        model_id = settings.BEDROCK_MODEL_ID
-        
-        # 1. Format tools for Bedrock Converse API
-        bedrock_tools = []
-        if tools:
-            for tool in tools:
-                name = tool["name"].replace(".", "_").replace("-", "_")
-                input_schema = tool.get("inputSchema", {})
-                if not input_schema:
-                    input_schema = {"type": "object", "properties": {}}
-                bedrock_tools.append({
-                    "toolSpec": {
-                        "name": name,
-                        "description": tool.get("description", "")[:200],
-                        "inputSchema": {
-                            "json": input_schema
-                        }
-                    }
-                })
-                
-        # 2. Format messages for Bedrock Converse API
-        bedrock_messages = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content")
-            
-            if isinstance(content, str):
-                msg_content = [{"text": content}]
-            elif isinstance(content, list):
-                msg_content = content
-            else:
-                msg_content = []
-                
-            if role == "assistant" and msg.get("tool_calls"):
-                for tc in msg["tool_calls"]:
-                    tc_name = tc["name"].replace(".", "_").replace("-", "_")
-                    msg_content.append({
-                        "toolUse": {
-                            "toolUseId": tc["id"],
-                            "name": tc_name,
-                            "input": tc["arguments"]
+            openai_tools = []
+            if tools:
+                for tool in tools:
+                    input_schema = tool.get("inputSchema", {})
+                    if not input_schema:
+                        input_schema = {"type": "object", "properties": {}}
+                    openai_tools.append({
+                        "type": "function",
+                        "function": {
+                            "name": tool["name"],
+                            "description": tool.get("description", "")[:200],
+                            "parameters": input_schema
                         }
                     })
-            elif role == "tool" or msg.get("tool_result"):
-                tc_id = msg.get("tool_call_id")
-                status = "success" if not msg.get("is_error", False) else "error"
-                
-                output_val = msg.get("output")
-                result_content = [{"json": output_val if isinstance(output_val, dict) else {"result": str(output_val)}}]
-                    
-                bedrock_messages.append({
-                    "role": "user",
-                    "content": [{
-                        "toolResult": {
-                            "toolUseId": tc_id,
-                            "content": result_content,
-                            "status": status
-                        }
-                    }]
-                })
-                continue
-                
-            bedrock_messages.append({
-                "role": role,
-                "content": msg_content
-            })
-            
-        system = [{"text": system_prompt}] if system_prompt else []
-        
-        params = {
-            "modelId": model_id,
-            "messages": bedrock_messages,
-            "system": system,
-            "inferenceConfig": {
-                "maxTokens": max_tokens,
-                "temperature": temperature
-            }
-        }
-        if bedrock_tools:
-            params["toolConfig"] = {"tools": bedrock_tools}
-            
-        response = client.converse(**params)
-        output_msg = response["output"]["message"]
-        
-        text_content = ""
-        tool_calls = []
-        
-        for part in output_msg.get("content", []):
-            if "text" in part:
-                text_content += part["text"]
-            elif "toolUse" in part:
-                tu = part["toolUse"]
-                original_name = tu["name"]
-                if tools:
-                    for t in tools:
-                        if t["name"].replace(".", "_").replace("-", "_") == tu["name"]:
-                            original_name = t["name"]
-                            break
-                tool_calls.append({
-                    "id": tu["toolUseId"],
-                    "name": original_name,
-                    "arguments": tu["input"]
-                })
-                
-        return {
-            "role": "assistant",
-            "content": text_content,
-            "tool_calls": tool_calls
-        }
-        
-    def _converse_openai(
-        self,
-        messages: List[Dict[str, Any]],
-        system_prompt: Optional[str],
-        tools: Optional[List[Dict[str, Any]]],
-        max_tokens: int,
-        temperature: float,
-        request_id: str,
-    ) -> Dict[str, Any]:
-        client = self._get_openai_client()
-        model_id = settings.OPENAI_MODEL
-        
-        openai_tools = []
-        if tools:
-            for tool in tools:
-                input_schema = tool.get("inputSchema", {})
-                if not input_schema:
-                    input_schema = {"type": "object", "properties": {}}
-                openai_tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": tool["name"],
-                        "description": tool.get("description", "")[:200],
-                        "parameters": input_schema
-                    }
-                })
                 
         openai_messages = []
         if system_prompt:
@@ -449,15 +313,15 @@ class BedrockClient:
             if role == "assistant" and msg.get("tool_calls"):
                 openai_tc = []
                 for tc in msg["tool_calls"]:
-                    openai_tc.append({
-                        "id": tc["id"],
-                        "type": "function",
-                        "function": {
-                            "name": tc["name"],
-                            "arguments": json.dumps(tc["arguments"])
-                        }
+                    try:
+                        args = json.loads(tc.function.arguments)
+                    except Exception:
+                        args = {}
+                    tool_calls.append({
+                        "id": tc.id,
+                        "name": tc.function.name,
+                        "arguments": args
                     })
-                openai_msg["tool_calls"] = openai_tc
                 
             elif role == "tool":
                 openai_msg["tool_call_id"] = msg.get("tool_call_id")
@@ -561,10 +425,10 @@ class BedrockClient:
                 )
                 return {"status": "available", "provider": "bedrock"}
             else:
-                # For non-Bedrock, skip live probe — just confirm config is present
-                if settings.OPENAI_MODEL:
+                # For non-Bedrock, skip live probe — just confirm config
+                if settings.OPENAI_API_KEY:
                     return {"status": "available", "provider": "openai"}
-                return {"status": "misconfigured", "provider": "openai", "reason": "OPENAI_MODEL not set"}
+                return {"status": "misconfigured", "provider": "openai"}
         except Exception as exc:
             code = classify_provider_exception(exc)
             return {"status": "unavailable", "provider": settings.AI_PROVIDER, "error_code": code}
@@ -578,4 +442,60 @@ class _SafeError(Exception):
 
 
 # Module-level singleton
+bedrock_client = BedrockClient()
+
+---- END ORIGINAL IMPLEMENTATION ----
+'''
+
+# ---------------------------------------------------------------------------
+# Lightweight active stub
+# ---------------------------------------------------------------------------
+import uuid
+import logging
+from typing import Optional, List, Dict, Any
+
+from app.settings import settings
+from app.errors import ErrorCode, build_error_response
+
+logger = logging.getLogger(__name__)
+
+
+class _SafeError(Exception):
+    """Internal sentinel — carries a safe error response dict."""
+
+    def __init__(self, response: dict) -> None:
+        self.response = response
+        super().__init__(response.get("error", {}).get("code", "disabled"))
+
+
+class BedrockClient:
+    """Minimal stub of the Bedrock client used while Bedrock is disabled.
+
+    Methods present are intentionally lightweight and return safe,
+    non-exceptional responses where possible to avoid cascading failures.
+    """
+
+    def __init__(self) -> None:
+        self._provider = settings.AI_PROVIDER
+
+    def invoke(self, *args, **kwargs) -> str:
+        rid = kwargs.get("request_id") or str(uuid.uuid4())
+        logger.warning("Bedrock client invoked while disabled", extra={"request_id": rid})
+        raise _SafeError(build_error_response(ErrorCode.AI_PROVIDER_UNAVAILABLE, rid))
+
+    def converse_with_tools(self, *args, **kwargs) -> Dict[str, Any]:
+        rid = kwargs.get("request_id") or str(uuid.uuid4())
+        logger.warning("Converse_with_tools called while Bedrock disabled", extra={"request_id": rid})
+        raise _SafeError(build_error_response(ErrorCode.AI_PROVIDER_UNAVAILABLE, rid))
+
+    def generate_diagram_image(self, *args, **kwargs) -> Optional[str]:
+        # No image generation available in stub
+        return None
+
+    def check_availability(self) -> dict:
+        # Report that Bedrock is intentionally disabled locally
+        return {"status": "disabled", "provider": "bedrock"}
+
+
+# Module-level singleton used by the rest of the codebase
 bedrock_client = BedrockClient()
