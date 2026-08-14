@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import mermaid from "mermaid";
+import html2canvas from "html2canvas";
 import { GeneratedVisualCard, VisualErrorState } from "./GeneratedVisualCard";
 import { StructuredDiagramCard } from "./StructuredDiagramCard";
 
@@ -484,6 +485,58 @@ function VisualResponseBlock({ data, onEdit }) {
             {showExplanation ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             <span>{showExplanation ? "Hide Explanation" : "Show Explanation"}</span>
           </button>
+        <button
+          onClick={async () => {
+            const node = containerRef.current;
+            if (!node) return;
+            // create a polished wrapper
+            const wrapper = document.createElement("div");
+            wrapper.style.boxSizing = "border-box";
+            wrapper.style.width = "1400px";
+            wrapper.style.padding = "32px";
+            wrapper.style.borderRadius = "24px";
+            wrapper.style.background = pngBackground === "white" ? "#ffffff" : "#02040a";
+            wrapper.style.display = "flex";
+            wrapper.style.justifyContent = "center";
+            wrapper.style.alignItems = "center";
+            wrapper.style.boxShadow = "0 20px 60px rgba(2,4,10,0.6)";
+            const inner = node.cloneNode(true);
+            inner.style.width = "100%";
+            inner.style.background = "transparent";
+            inner.style.padding = "40px";
+            inner.style.borderRadius = "16px";
+            inner.querySelectorAll("svg").forEach((s) => {
+              s.setAttribute("width", "1000");
+              s.setAttribute("height", "600");
+            });
+            wrapper.appendChild(inner);
+            wrapper.style.position = "absolute";
+            wrapper.style.left = "-9999px";
+            wrapper.style.top = "-9999px";
+            document.body.appendChild(wrapper);
+            try {
+              const canvas = await html2canvas(wrapper, { scale: Number(pngScale) || 3, backgroundColor: null });
+              canvas.toBlob((blob) => {
+                if (!blob) return;
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "diagram-stylized.png";
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+              }, "image/png", 1);
+            } catch (e) {
+              console.error(e);
+            } finally {
+              document.body.removeChild(wrapper);
+            }
+          }}
+          className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+        >
+          <Info size={12} />
+          <span className="text-xs">Stylize & Export Image</span>
+        </button>
           {showExplanation && (
             <div className="space-y-3 mt-2">
               {data.sections.map((section, i) => (
