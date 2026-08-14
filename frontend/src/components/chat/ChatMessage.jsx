@@ -338,6 +338,91 @@ function MermaidDiagram({ code }) {
           <span>{showCode ? "Hide Code" : "View Code"}</span>
         </button>
       </div>
+      <div className="px-4 py-2 bg-slate-950/80 border-t border-white/5 flex items-center justify-end gap-2 text-[11px] text-slate-500">
+        <button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(formatAndSanitizeMermaidCode(code) || "");
+            } catch {}
+          }}
+          className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+        >
+          <Copy size={12} />
+          <span className="text-xs">Copy Code</span>
+        </button>
+        <button
+          onClick={() => {
+            const svgEl = containerRef.current?.querySelector("svg");
+            if (!svgEl) return;
+            const serializer = new XMLSerializer();
+            const source = serializer.serializeToString(svgEl);
+            const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "diagram.svg";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          }}
+          className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+        >
+          <ChevronRight size={12} />
+          <span className="text-xs">Download SVG</span>
+        </button>
+        <button
+          onClick={async () => {
+            const svgEl = containerRef.current?.querySelector("svg");
+            if (!svgEl) return;
+            const clone = svgEl.cloneNode(true);
+            try {
+              // derive width/height from viewBox or bounding box
+              const vb = clone.viewBox && clone.viewBox.baseVal ? clone.viewBox.baseVal : null;
+              let width = vb && vb.width ? vb.width : clone.getAttribute("width") || clone.clientWidth || 1200;
+              let height = vb && vb.height ? vb.height : clone.getAttribute("height") || clone.clientHeight || 800;
+              width = Number(width) || 1200;
+              height = Number(height) || 800;
+              const scale = 3; // high-res multiplier
+              const serializer = new XMLSerializer();
+              const svgString = serializer.serializeToString(clone);
+              const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+              const url = URL.createObjectURL(svgBlob);
+              const img = new Image();
+              img.onload = () => {
+                try {
+                  const canvas = document.createElement("canvas");
+                  canvas.width = Math.ceil(width * scale);
+                  canvas.height = Math.ceil(height * scale);
+                  const ctx = canvas.getContext("2d");
+                  ctx.fillStyle = "transparent";
+                  ctx.fillRect(0, 0, canvas.width, canvas.height);
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  canvas.toBlob((blob) => {
+                    if (!blob) return;
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = "diagram.png";
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(link.href);
+                    URL.revokeObjectURL(url);
+                  }, "image/png", 1);
+                } catch (e) {
+                  URL.revokeObjectURL(url);
+                }
+              };
+              img.onerror = () => { URL.revokeObjectURL(url); };
+              img.src = url;
+            } catch (e) {}
+          }}
+          className="flex items-center gap-1 text-slate-400 hover:text-white px-2 py-1 rounded-md bg-white/5 border border-white/10 transition-colors"
+        >
+          <CheckCircle2 size={12} />
+          <span className="text-xs">Export PNG (High‑Res)</span>
+        </button>
+      </div>
       {showCode && (
         <div className="p-3 bg-black/80 border-t border-white/10 font-mono text-xs text-indigo-300 overflow-x-auto">
           <pre>{formatAndSanitizeMermaidCode(code)}</pre>
