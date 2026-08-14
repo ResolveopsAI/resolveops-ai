@@ -308,14 +308,29 @@ def chat_rca(req: ChatRequest):
         # If analyze_rca raised an HTTPException it will propagate; otherwise map response
         if isinstance(result, dict) and result.get("status") == "success":
             analysis = result.get("analysis", {})
-            answer = analysis.get("summary") or analysis.get("probable_root_cause") or ""
+            summary = analysis.get("summary") or ""
+            probable = analysis.get("probable_root_cause") or ""
+            fixes = analysis.get("recommended_fix") or analysis.get("recommended_fix", []) or []
+
+            # Compose a readable assistant answer combining summary, probable cause and recommended fixes
+            parts = []
+            if summary:
+                parts.append(f"Summary: {summary}")
+            if probable:
+                parts.append(f"Probable root cause: {probable}")
+            if fixes and isinstance(fixes, list) and len(fixes) > 0:
+                fixes_text = "\n".join([f"- {f}" for f in fixes])
+                parts.append(f"Recommended fixes:\n{fixes_text}")
+
+            answer_text = "\n\n".join(parts) if parts else (analysis.get("answer") or summary or "No analysis available.")
+
             return {
                 "status": "success",
-                "answer": answer,
+                "answer": answer_text,
                 "execution": {"requestId": str(uuid4())},
                 "execution_path": "ai_rca_chat",
                 "provider": os.getenv("AI_PROVIDER", "openai"),
-                "model": os.getenv("OPENAI_MODEL_NAME", os.getenv("GROQ_MODEL_NAME", "unknown")),
+                "model": os.getenv("OPENAI_MODEL_NAME", os.getenv("GROQ_MODEL_NAME", os.getenv("OPENAI_MODEL", "unknown"))),
             }
 
         # Fallback: return a friendly error structure
