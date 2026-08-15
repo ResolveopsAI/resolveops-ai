@@ -14,8 +14,10 @@ const formatLocalCurrency = (usdVal, maxDigits = 2) => {
   const num = Number(usdVal);
   if (isNaN(num)) return "$0.00";
 
-  // Check if timezone is India (UTC+5:30)
-  const isIndia = typeof window !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata';
+  // Check if timezone is India (UTC+5:30). Matches 'Asia/Kolkata', 'Asia/Calcutta' or timezone offset of -330
+  const tz = typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
+  const isIndia = tz?.includes('Kolkata') || tz?.includes('Calcutta') || (typeof window !== 'undefined' && new Date().getTimezoneOffset() === -330);
+  
   if (isIndia) {
     const inrVal = num * 83.0;
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: maxDigits }).format(inrVal);
