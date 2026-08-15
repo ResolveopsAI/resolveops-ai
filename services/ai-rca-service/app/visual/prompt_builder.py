@@ -114,10 +114,10 @@ Layout rules:
 
 Text rules:
 - All component names must be spelled exactly as specified above
-- Use short labels only — no paragraph text inside the diagram
+- Include a brief description, role explanation, or config details (e.g. lists of secrets, paths, ports, or functions like 'Used for async messaging', 'Secrets: database-url, api-key') as 1-2 lines of text or bullet points inside or directly below each component's card to explain the process and data flow.
 - Do not place text labels directly on top of connector arrows
 - Do not abbreviate component names in ways that change their meaning
-- Every named component must have its label visible in the final image
+- Every named component and its accompanying description must have its label visible in the final image
 
 Do not include:
 - Generic placeholder boxes labeled "Layer" or "Component" without specific names
