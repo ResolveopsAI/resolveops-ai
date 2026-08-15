@@ -301,30 +301,62 @@ export default function AwsResourceDetailPage() {
 
         <AwsResourceMetadataGrid resource={resource} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-          {/* Left Side Column: Cost, Relationships (1/4 width on xl screens) */}
-          <div className="space-y-8">
-            {/* Cost Intelligence */}
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl">
+        <div className="space-y-8">
+          {/* Relationship Context - Full Width Row */}
+          <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] hover:border-white/[0.15] transition-colors bg-[#080d19]/40">
+            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-sky-400" /> Relationship Context
+            </h3>
+            {relationships && relationships.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {relationships.map((rel, i) => (
+                  <div key={i} className="p-4 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/[0.04] transition-colors flex flex-col justify-center">
+                    <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">{rel.type}</span>
+                    <div className="text-sm font-mono text-slate-200 mt-1 truncate" title={rel.id}>{rel.id}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 font-mono italic">No direct relationships found.</div>
+            )}
+            <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
+          </div>
+
+          {/* Sub-Resources & Workloads (Full Width) */}
+          {resource.resource_type === "AWS::EC2::Instance" && subresources && (
+            <AwsSubResources subresources={subresources} resource={resource} />
+          )}
+
+          {resource.resource_type === "AWS::EKS::Cluster" ? (
+            <AwsEksWorkloads workloadsData={eksWorkloads} resource={resource} />
+          ) : resource.resource_type === "AWS::EC2::Instance" ? (
+            <AwsRuntime runtime={runtime} resource={resource} />
+          ) : null}
+
+          {/* Cost Intelligence - Full Width (Optional display if present) */}
+          {cost && (
+            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl bg-[#080d19]/40">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-emerald-400" /> Exact Cost Intelligence
               </h3>
-              {cost ? (
-                <div className="space-y-4">
+              {cost.status !== "error" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Billed Month to Date */}
-                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 hover:border-emerald-500/30 transition-colors">
-                    <p className="text-xs text-slate-400 font-mono">Actual Billed (Month to Date)</p>
-                    {cost.actual_cost?.status === "available" ? (
-                      <p className="text-2xl font-black font-mono text-emerald-400 mt-1">
-                        {formatLocalCurrency(cost.actual_cost.month_to_date)}
-                      </p>
-                    ) : (
-                      <div className="mt-1 flex items-center gap-2 text-xs text-amber-400 font-mono bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
-                        <AlertTriangle size={14} className="shrink-0" />
-                        <span>Live Cost Explorer: Attach <strong>ce:GetCostAndUsage</strong> permission in AWS IAM</span>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-slate-500 mt-1.5 font-mono">Source: {cost.actual_cost?.source || "AWS Billing"}</p>
+                  <div className="p-4 bg-[#0a0f1d] rounded-xl border border-white/10 hover:border-emerald-500/30 transition-colors flex flex-col justify-between">
+                    <div>
+                      <p className="text-xs text-slate-400 font-mono">Actual Billed (Month to Date)</p>
+                      {cost.actual_cost?.status === "available" ? (
+                        <p className="text-2xl font-black font-mono text-emerald-400 mt-1">
+                          {formatLocalCurrency(cost.actual_cost.month_to_date)}
+                        </p>
+                      ) : (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-amber-400 font-mono bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                          <AlertTriangle size={14} className="shrink-0" />
+                          <span>Live Cost Explorer: Attach <strong>ce:GetCostAndUsage</strong> permission in AWS IAM</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-3 font-mono">Source: {cost.actual_cost?.source || "AWS Billing"}</p>
                   </div>
 
                   {/* Exact On-Demand Catalog Rate */}
@@ -352,7 +384,7 @@ export default function AwsResourceDetailPage() {
                       </div>
                     </div>
 
-                    <p className="text-[10px] text-slate-500 font-mono">
+                    <p className="text-[10px] text-slate-500 font-mono pt-1">
                       Calculated for <strong className="text-slate-300">{resource.metadata?.instance_type || "t2.xlarge"}</strong> in <strong className="text-slate-300">{resource.region || "ap-south-1"}</strong>
                     </p>
                   </div>
@@ -363,43 +395,7 @@ export default function AwsResourceDetailPage() {
                 </div>
               )}
             </div>
-
-            {/* Relationship Context */}
-            <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] hover:border-white/[0.15] transition-colors">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-sky-400" /> Relationship Context
-              </h3>
-              {relationships && relationships.length > 0 ? (
-                <div className="space-y-3">
-                  {relationships.map((rel, i) => (
-                    <div key={i} className="p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/[0.04] transition-colors">
-                      <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">{rel.type}</span>
-                      <div className="text-xs font-mono text-slate-200 mt-1 truncate" title={rel.id}>{rel.id}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-slate-400 font-mono italic">No direct relationships found.</div>
-              )}
-              <p className="text-[10px] text-slate-500 font-mono mt-4 border-t border-white/5 pt-3">View architecture topology in Architecture Diagram.</p>
-            </div>
-          </div>
-
-          {/* Main Column: Workloads, Sub-Resources (3/4 width on xl screens) */}
-          <div className="xl:col-span-3 space-y-8">
-            
-            {/* Sub-Resources (applicable to EC2 instances) */}
-            {resource.resource_type === "AWS::EC2::Instance" && subresources && (
-              <AwsSubResources subresources={subresources} resource={resource} />
-            )}
-
-            {/* Dynamic Workloads: EKS Cluster vs. EC2 Container Workloads */}
-            {resource.resource_type === "AWS::EKS::Cluster" ? (
-              <AwsEksWorkloads workloadsData={eksWorkloads} resource={resource} />
-            ) : resource.resource_type === "AWS::EC2::Instance" ? (
-              <AwsRuntime runtime={runtime} resource={resource} />
-            ) : null}
-          </div>
+          )}
         </div>
 
         {/* Full Width Bottom Section for Risks & Logs */}
