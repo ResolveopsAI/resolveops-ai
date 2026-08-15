@@ -53,8 +53,21 @@ export default function AwsResourceDetailPage() {
   }, [resourceId]);
 
   const fetchResourceData = async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    else setRefreshing(true);
+    if (!isRefresh) {
+      setLoading(true);
+      setResource(null);
+      setCost(null);
+      setRisks([]);
+      setLogs([]);
+      setLogsStatus(null);
+      setMetrics(null);
+      setEvents([]);
+      setRelationships([]);
+      setSubresources(null);
+      setRuntime(null);
+    } else {
+      setRefreshing(true);
+    }
     try {
       const resData = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resourceId)}`).catch(() => null);
       if (resData) setResource(resData);

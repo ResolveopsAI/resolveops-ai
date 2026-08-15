@@ -351,7 +351,7 @@ def get_resource_runtime(
         "host_metrics": {}
     }
     
-    if not resource or "EC2" not in resource.get("resource_type", ""):
+    if not resource or resource.get("resource_type") != "AWS::EC2::Instance":
         return fallback
         
     try:
@@ -386,7 +386,7 @@ def get_resource_relationships(
     meta = resource.get("metadata", {})
     res_type = resource.get("resource_type", "")
     
-    if "EC2" in res_type:
+    if res_type == "AWS::EC2::Instance":
         if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
         if meta.get("subnet_id"): relationships.append({"type": "Subnet", "id": meta.get("subnet_id")})
         if meta.get("public_ip"): relationships.append({"type": "Public IP", "id": meta.get("public_ip")})
@@ -407,6 +407,12 @@ def get_resource_relationships(
                     relationships.append({"type": "Network Interface", "id": e.get("id")})
         except Exception:
             pass
+            
+    elif res_type == "AWS::EC2::SecurityGroup":
+        if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
+        
+    elif res_type in ["AWS::EC2::VPC", "AWS::EC2::Subnet"]:
+        if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
     
     elif "LoadBalancer" in res_type:
         if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
