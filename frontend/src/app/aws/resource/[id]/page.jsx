@@ -9,6 +9,21 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip 
 import ResourceRiskSummaryCards from "@/components/resource-intelligence/ResourceRiskSummaryCards";
 import ResourceRiskList from "@/components/resource-intelligence/ResourceRiskList";
 
+const formatLocalCurrency = (usdVal, maxDigits = 2) => {
+  if (usdVal === undefined || usdVal === null) return "$0.00";
+  const num = Number(usdVal);
+  if (isNaN(num)) return "$0.00";
+
+  // Check if timezone is India (UTC+5:30)
+  const isIndia = typeof window !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Kolkata';
+  if (isIndia) {
+    const inrVal = num * 83.0;
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: maxDigits }).format(inrVal);
+  }
+  
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: maxDigits }).format(num);
+};
+
 export default function AwsResourceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -286,7 +301,7 @@ export default function AwsResourceDetailPage() {
                     <p className="text-xs text-slate-400 font-mono">Actual Billed (Month to Date)</p>
                     {cost.actual_cost?.status === "available" ? (
                       <p className="text-2xl font-black font-mono text-emerald-400 mt-1">
-                        ${cost.actual_cost.month_to_date} <span className="text-xs text-slate-500 font-normal">USD</span>
+                        {formatLocalCurrency(cost.actual_cost.month_to_date)}
                       </p>
                     ) : (
                       <div className="mt-1 flex items-center gap-2 text-xs text-amber-400 font-mono bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
@@ -308,16 +323,16 @@ export default function AwsResourceDetailPage() {
 
                     <div>
                       <p className="text-2xl font-black font-mono text-white">
-                        ${cost.estimated_running_price?.monthly || 135.49} <span className="text-xs text-slate-400 font-normal">/ mo</span>
+                        {formatLocalCurrency(cost.estimated_running_price?.monthly || 135.49)} <span className="text-xs text-slate-400 font-normal">/ mo</span>
                       </p>
                       <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-white/5 text-xs font-mono">
                         <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
                           <span className="text-[10px] text-slate-500 block">HOURLY RATE</span>
-                          <span className="font-bold text-sky-400">${cost.estimated_running_price?.hourly || 0.1856} / hr</span>
+                          <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.hourly || 0.1856, 4)} / hr</span>
                         </div>
                         <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
                           <span className="text-[10px] text-slate-500 block">DAILY COST</span>
-                          <span className="font-bold text-sky-400">${cost.estimated_running_price?.daily || 4.45} / day</span>
+                          <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.daily || 4.45, 2)} / day</span>
                         </div>
                       </div>
                     </div>

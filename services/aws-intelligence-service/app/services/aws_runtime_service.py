@@ -55,7 +55,19 @@ class AWSRuntimeService:
             # Here we simulate the command request and return a mocked parsed response or error
             try:
                 import json
-                script = "if ! command -v docker &> /dev/null; then echo 'DOCKER_MISSING'; elif ! docker ps > /dev/null 2>&1; then echo 'DOCKER_DENIED'; else echo 'DOCKER_OK'; echo '---PS---'; docker ps -a --format '{{json .}}'; echo '---STATS---'; docker stats --no-stream --format '{{json .}}'; echo '---DF---'; docker system df --format '{{json .}}'; fi; echo '---HOST---'; df -h; echo '---FREE---'; free -m; echo '---UPTIME---'; uptime"
+                script = (
+                    "if command -v docker &>/dev/null; then DOCKER_CMD=\"docker\"; "
+                    "elif [ -x /snap/bin/docker ]; then DOCKER_CMD=\"/snap/bin/docker\"; "
+                    "elif [ -x /usr/bin/docker ]; then DOCKER_CMD=\"/usr/bin/docker\"; "
+                    "elif [ -x /usr/local/bin/docker ]; then DOCKER_CMD=\"/usr/local/bin/docker\"; "
+                    "else DOCKER_CMD=\"\"; fi; "
+                    "if [ -z \"$DOCKER_CMD\" ]; then echo 'DOCKER_MISSING'; "
+                    "elif ! $DOCKER_CMD ps > /dev/null 2>&1; then echo 'DOCKER_DENIED'; "
+                    "else echo 'DOCKER_OK'; echo '---PS---'; $DOCKER_CMD ps -a --format '{{json .}}'; "
+                    "echo '---STATS---'; $DOCKER_CMD stats --no-stream --format '{{json .}}'; "
+                    "echo '---DF---'; $DOCKER_CMD system df --format '{{json .}}'; fi; "
+                    "echo '---HOST---'; df -h; echo '---FREE---'; free -m; echo '---UPTIME---'; uptime"
+                )
                 cmd = ssm.send_command(
                     InstanceIds=[instance_id],
                     DocumentName="AWS-RunShellScript",
