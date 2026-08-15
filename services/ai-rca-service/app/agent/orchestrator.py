@@ -79,7 +79,7 @@ CRITICAL ANTI-HALLUCINATION RULES:
 2. If the MCP tools do not return specific workflow details (like Run ID or repo name), state explicitly that no specific failed workflow data was found.
 3. NEVER use placeholders like "workflow-run-123", "dependency-x", or "/github/workspace/project/src".
 When returning a written explanation for an architecture topic, use clear sections with headings.
-Do NOT embed Mermaid code blocks unless the user explicitly requests Mermaid.
+If you need to display any architecture diagram, flowchart, sequence, or workflow, ALWAYS output it as a Mermaid code block wrapped in ```mermaid ... ``` so the frontend can render it visually. NEVER output ASCII text art, raw text boxes, or text-based flowcharts (e.g., using +, -, | symbols).
 The visual pipeline handles diagram and image generation separately.
 """
 
