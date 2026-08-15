@@ -78,30 +78,32 @@ export default function AwsHubPage() {
         };
         setConnectionDetails(details);
         
-        // Auto-sync resources on initial load
-        setIsRefreshing(true);
-        try {
-          const authData = {
-            auth_method: res.auth_method || "environment",
-            connection_name: "AWS Connection"
-          };
-          const syncRes = await fetchApi("/api/v1/aws/resources/sync", {
-            method: "POST",
-            body: JSON.stringify(authData)
-          });
-          if (syncRes) {
-            if (syncRes.warnings && syncRes.warnings.length > 0) {
-              setWarnings(syncRes.warnings);
-            } else {
-              setWarnings([]);
-            }
-          }
-        } catch (syncErr) {
-          console.error("Auto-sync failed", syncErr);
-        } finally {
-          setIsRefreshing(false);
-        }
+        // Fetch existing cached resources immediately
         await fetchAwsResources();
+        
+        // Check if cached list is empty, only then run auto-sync to avoid UI flashes
+        const currentResources = await fetchApi("/api/v1/aws/resources");
+        if (!currentResources?.resources || currentResources.resources.length === 0) {
+          setIsRefreshing(true);
+          try {
+            const authData = {
+              auth_method: res.auth_method || "environment",
+              connection_name: "AWS Connection"
+            };
+            const syncRes = await fetchApi("/api/v1/aws/resources/sync", {
+              method: "POST",
+              body: JSON.stringify(authData)
+            });
+            if (syncRes) {
+              setWarnings(syncRes.warnings || []);
+              await fetchAwsResources();
+            }
+          } catch (syncErr) {
+            console.error("Auto-sync failed", syncErr);
+          } finally {
+            setIsRefreshing(false);
+          }
+        }
       } else {
         setStatus("disconnected");
       }

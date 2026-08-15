@@ -373,15 +373,15 @@ export default function AwsResourceDetailPage() {
           {/* Main Column: Workloads, Sub-Resources (2/3 width on xl screens) */}
           <div className="xl:col-span-2 space-y-8">
             
-            {/* Sub-Resources (applicable to non-EKS resources) */}
-            {subresources && !resource.resource_type?.includes("EKS") && (
+            {/* Sub-Resources (applicable to EC2 instances) */}
+            {resource.resource_type === "AWS::EC2::Instance" && subresources && (
               <AwsSubResources subresources={subresources} resource={resource} />
             )}
 
             {/* Dynamic Workloads: EKS Cluster vs. EC2 Container Workloads */}
-            {resource.resource_type?.includes("EKS") ? (
+            {resource.resource_type === "AWS::EKS::Cluster" ? (
               <AwsEksWorkloads workloadsData={eksWorkloads} resource={resource} />
-            ) : resource.resource_type?.includes("EC2") ? (
+            ) : resource.resource_type === "AWS::EC2::Instance" ? (
               <AwsRuntime runtime={runtime} resource={resource} />
             ) : null}
           </div>
@@ -495,9 +495,9 @@ function computeUptime(launchTime) {
 function AwsResourceMetadataGrid({ resource }) {
   if (!resource || !resource.metadata) return null;
   const meta = resource.metadata;
-  const isEC2 = resource.resource_type?.includes("EC2");
-  const isSG = resource.resource_type?.includes("SecurityGroup");
-  const isVolume = resource.resource_type?.includes("Volume");
+  const isEC2 = resource.resource_type === "AWS::EC2::Instance";
+  const isSG = resource.resource_type === "AWS::EC2::SecurityGroup";
+  const isVolume = resource.resource_type === "AWS::EC2::Volume";
 
   const renderField = (label, value, subtext = null, highlight = false) => {
     if (value === undefined || value === null || value === "") return null;
