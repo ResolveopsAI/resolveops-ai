@@ -953,6 +953,8 @@ function AwsRuntime({ runtime, resource }) {
     );
   }
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   const containers = liveContainers.map(c => ({
     name: c.name || c.id || "docker-container",
     image: c.image || "unknown-image",
@@ -964,11 +966,22 @@ function AwsRuntime({ runtime, resource }) {
     restarts: c.restarts || 0
   }));
 
+  const filteredContainers = containers.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.image.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Compute aggregate stats
+  const totalContainers = containers.length;
+  const runningContainers = containers.filter(c => c.status.toLowerCase().includes("up") || c.status.toLowerCase().includes("run")).length;
+  const avgCpu = (containers.reduce((acc, curr) => acc + curr.cpu_pct, 0) / (totalContainers || 1)).toFixed(1);
+  const totalMem = (containers.reduce((acc, curr) => acc + curr.mem_mb, 0) / 1024).toFixed(2);
+
   return (
     <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none transition-all duration-500 group-hover:bg-fuchsia-500/10" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none transition-all duration-500" />
       
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 relative z-10">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 relative z-10">
         <div>
           <h3 className="text-lg font-black text-white flex items-center gap-3">
             <div className="p-2 bg-fuchsia-500/10 rounded-lg border border-fuchsia-500/20">
@@ -977,81 +990,99 @@ function AwsRuntime({ runtime, resource }) {
             Application Workloads
           </h3>
           <p className="text-xs text-slate-400 font-mono mt-2">
-            Live telemetry for <strong className="text-slate-200 border-b border-dashed border-slate-500">{resource?.resource_name || resource?.id}</strong>
+            Docker telemetry for <strong className="text-slate-200">{resource?.resource_name || resource?.id}</strong>
           </p>
         </div>
-        <span className="text-[10px] font-mono font-bold text-fuchsia-400 bg-fuchsia-500/10 px-3 py-1.5 rounded-full border border-fuchsia-500/20 uppercase tracking-widest shadow-[0_0_15px_rgba(217,70,239,0.15)] flex items-center gap-2 shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
-          Docker Engine Active
-        </span>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <input 
+            type="text" 
+            placeholder="Search containers..." 
+            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-fuchsia-500/50 transition-colors w-full md:w-64"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <span className="text-[10px] font-mono font-bold text-fuchsia-400 bg-fuchsia-500/10 px-3 py-1.5 rounded-full border border-fuchsia-500/20 uppercase tracking-widest shadow-[0_0_15px_rgba(217,70,239,0.15)] flex items-center gap-2 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+            Docker Active
+          </span>
+        </div>
       </div>
 
-      {/* Container Performance Cards in Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
-        {containers.map((c, idx) => (
-          <div key={idx} className="bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/[0.05] rounded-xl p-5 hover:border-fuchsia-500/30 hover:shadow-[0_0_25px_rgba(217,70,239,0.05)] transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0" />
-                  <h4 className="text-sm font-black text-white font-mono truncate">{c.name}</h4>
-                </div>
-                <div className="inline-block bg-white/[0.03] px-2 py-0.5 rounded border border-white/[0.05]">
-                  <span className="text-[10px] text-slate-400 font-mono truncate">{c.image}</span>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded text-[9px] font-black font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider shrink-0">
-                Healthy
-              </span>
-            </div>
+      {/* Aggregate Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 relative z-10">
+        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+          <span className="text-[9px] text-slate-500 font-mono block mb-1">TOTAL CONTAINERS</span>
+          <span className="text-xl font-black font-mono text-white">{totalContainers}</span>
+        </div>
+        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+          <span className="text-[9px] text-slate-500 font-mono block mb-1">RUNNING / UP</span>
+          <span className="text-xl font-black font-mono text-emerald-400">{runningContainers}</span>
+        </div>
+        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+          <span className="text-[9px] text-slate-500 font-mono block mb-1">AVG CONTAINER CPU</span>
+          <span className="text-xl font-black font-mono text-sky-400">{avgCpu}%</span>
+        </div>
+        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+          <span className="text-[9px] text-slate-500 font-mono block mb-1">AGGREGATE MEMORY</span>
+          <span className="text-xl font-black font-mono text-purple-400">{totalMem} GiB</span>
+        </div>
+      </div>
 
-            {/* Performance Gauges */}
-            <div className="space-y-4 pt-4 border-t border-white/5 text-xs font-mono">
-              {/* CPU Utilization Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-500 font-bold tracking-wider">CPU UTILIZATION</span>
-                  <span className="text-sky-400 font-black">{c.cpu_pct}%</span>
-                </div>
-                <div className="w-full bg-slate-900/80 rounded-full h-2 shadow-inner overflow-hidden border border-white/[0.02]">
-                  <div
-                    className="bg-gradient-to-r from-sky-500 to-blue-600 h-full rounded-full transition-all shadow-[0_0_10px_rgba(56,189,248,0.5)] relative"
-                    style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }} />
+      {/* Compact Container Workloads Table */}
+      <div className="w-full overflow-x-auto custom-scrollbar relative z-10">
+        <table className="w-full text-left border-collapse min-w-[750px] text-xs font-mono">
+          <thead>
+            <tr className="bg-[#070b16] text-slate-400 text-[10px] uppercase tracking-wider border-b border-white/[0.08]">
+              <th className="px-4 py-3 font-bold">Container Name / Image</th>
+              <th className="px-4 py-3 font-bold">Status</th>
+              <th className="px-4 py-3 font-bold" style={{ width: "150px" }}>CPU Usage</th>
+              <th className="px-4 py-3 font-bold" style={{ width: "150px" }}>Memory footprint</th>
+              <th className="px-4 py-3 font-bold">Exposed Ports</th>
+              <th className="px-4 py-3 font-bold text-center">Restarts</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
+            {filteredContainers.map((c, idx) => (
+              <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                <td className="px-4 py-3.5">
+                  <div className="text-white font-bold text-sm truncate max-w-[200px]" title={c.name}>{c.name}</div>
+                  <div className="text-[10px] text-slate-500 truncate max-w-[200px] mt-0.5" title={c.image}>{c.image}</div>
+                </td>
+                <td className="px-4 py-3.5">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    Running
+                  </span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-sky-400 font-bold">{c.cpu_pct}%</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Memory Usage Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-500 font-bold tracking-wider">MEMORY USAGE</span>
-                  <span className="text-purple-400 font-black">{c.mem_mb} <span className="text-slate-500 font-normal">/ {c.mem_limit} MB</span></span>
-                </div>
-                <div className="w-full bg-slate-900/80 rounded-full h-2 shadow-inner overflow-hidden border border-white/[0.02]">
-                  <div
-                    className="bg-gradient-to-r from-purple-500 to-fuchsia-600 h-full rounded-full transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)] relative"
-                    style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }} />
+                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-sky-500 h-full rounded-full" style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }} />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-white/5 text-[10px] font-mono">
-              <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-center">
-                <span className="text-slate-500 mb-0.5">EXPOSED PORTS</span>
-                <span className="text-slate-200 font-bold truncate" title={c.ports}>{c.ports}</span>
-              </div>
-              <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-center">
-                <span className="text-slate-500 mb-0.5">RESTARTS</span>
-                <span className="text-emerald-400 font-bold text-sm">{c.restarts}</span>
-              </div>
-            </div>
-          </div>
-        ))}
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-purple-400 font-bold">{c.mem_mb} <span className="text-slate-500 font-normal">/ {c.mem_limit} MB</span></span>
+                  </div>
+                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }} />
+                  </div>
+                </td>
+                <td className="px-4 py-3.5 text-slate-300 max-w-[150px] truncate" title={c.ports}>{c.ports}</td>
+                <td className="px-4 py-3.5 text-center font-bold text-slate-400">{c.restarts}</td>
+              </tr>
+            ))}
+            {filteredContainers.length === 0 && (
+              <tr>
+                <td colSpan="6" className="p-12 text-center text-slate-500 italic">
+                  No matching containers found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
