@@ -128,7 +128,27 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
-  /* Glass panel focus/hover enhancement */
+  /* Custom scrollbar — thin, dark, on-theme */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.25) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.25);
+    border-radius: 99px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.45);
+  }
+
+
   .glass-panel:focus-within {
     border-color: var(--accent-primary);
     box-shadow: 

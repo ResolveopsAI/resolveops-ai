@@ -50,7 +50,7 @@ export default function SuggestionsHub() {
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
     if (!token) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     setLoading(false);

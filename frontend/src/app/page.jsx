@@ -50,12 +50,12 @@ export default function GlobalDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
     if (!token) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     const role = getUserRole();
     if (role !== "admin") {
-      router.push("/chat");
+      router.replace("/chat");
       return;
     }
     setAuthChecked(true);
