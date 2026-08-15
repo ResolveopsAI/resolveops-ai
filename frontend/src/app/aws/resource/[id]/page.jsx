@@ -301,8 +301,8 @@ export default function AwsResourceDetailPage() {
 
         <AwsResourceMetadataGrid resource={resource} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Left Side Column: Cost, Relationships (1/3 width on xl screens) */}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Left Side Column: Cost, Relationships (1/4 width on xl screens) */}
           <div className="space-y-8">
             {/* Cost Intelligence */}
             <div className="glass-panel p-6 rounded-2xl border border-white/[0.08] shadow-xl">
@@ -385,8 +385,8 @@ export default function AwsResourceDetailPage() {
             </div>
           </div>
 
-          {/* Main Column: Workloads, Sub-Resources (2/3 width on xl screens) */}
-          <div className="xl:col-span-2 space-y-8">
+          {/* Main Column: Workloads, Sub-Resources (3/4 width on xl screens) */}
+          <div className="xl:col-span-3 space-y-8">
             
             {/* Sub-Resources (applicable to EC2 instances) */}
             {resource.resource_type === "AWS::EC2::Instance" && subresources && (
