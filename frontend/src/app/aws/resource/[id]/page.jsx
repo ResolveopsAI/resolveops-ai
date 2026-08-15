@@ -1057,7 +1057,7 @@ function AwsRuntime({ runtime, resource }) {
         </div>
 
         {/* Service Health Grid (Custom visual style from monitoring page) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
           {filteredContainers.map((c, idx) => {
             // Generate mini sparkline utilization points
             const sparkData = Array.from({ length: 6 }).map((_, i) => ({
@@ -1068,55 +1068,70 @@ function AwsRuntime({ runtime, resource }) {
               <div 
                 key={idx} 
                 onClick={() => handleContainerClick(c)}
-                className="bg-[#060914] border border-white/[0.05] hover:border-fuchsia-500/35 rounded-xl p-5 hover:shadow-[0_0_20px_rgba(217,70,239,0.06)] transition-all duration-300 cursor-pointer transform hover:-translate-y-1 relative overflow-hidden group flex flex-col justify-between"
+                className="bg-[#060914] border border-white/[0.05] hover:border-emerald-500/35 rounded-xl p-5 hover:shadow-[0_0_20px_rgba(16,185,129,0.06)] transition-all duration-300 cursor-pointer transform hover:-translate-y-1 relative overflow-hidden group flex flex-col justify-between"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500/[0.01] rounded-full blur-2xl pointer-events-none group-hover:bg-fuchsia-500/[0.03] transition-all" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/[0.01] rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/[0.03] transition-all" />
                 
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                      <h4 className="text-xs font-black text-white font-mono truncate" title={c.name}>{c.name}</h4>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                  {/* Top Row: Name and Status */}
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-sm font-black text-white font-mono truncate" title={c.name}>{c.name}</h4>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400" />
                       HEALTHY
                     </span>
                   </div>
                   
-                  <div className="text-[10px] text-slate-500 font-mono truncate mb-4 bg-white/[0.02] px-2 py-1 rounded border border-white/5 inline-block w-full">
+                  {/* Subtitle */}
+                  <div className="text-[10px] text-slate-500 font-mono truncate mb-4">
                     {c.image}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-[10px] font-mono mb-4">
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">CPU</span>
-                      <span className="text-sky-400 font-black text-xs">{c.cpu_pct}%</span>
+                  {/* CPU Progress Bar */}
+                  <div className="space-y-1 mb-3">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                      <span>CPU</span>
+                      <span className="font-bold text-sky-400">{c.cpu_pct}%</span>
                     </div>
-                    <div>
-                      <span className="text-slate-500 block mb-0.5">MEMORY</span>
-                      <span className="text-purple-400 font-black text-xs">{c.mem_mb} MB</span>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-sky-500 h-full rounded-full" style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }} />
+                    </div>
+                  </div>
+
+                  {/* MEM Progress Bar */}
+                  <div className="space-y-1 mb-4">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                      <span>MEM</span>
+                      <span className="font-bold text-purple-400">{(c.mem_mb / c.mem_limit * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }} />
                     </div>
                   </div>
                 </div>
 
-                {/* Mini Sparkline Chart */}
+                {/* Sparkline chart at the bottom */}
                 <div className="h-10 w-full mb-3 select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id={`sparkGrad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#d946ef" stopOpacity={0.15}/>
-                          <stop offset="95%" stopColor="#d946ef" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <Area type="monotone" dataKey="val" stroke="#d946ef" strokeWidth={1} fillOpacity={1} fill={`url(#sparkGrad-${idx})`} />
+                      <Area type="monotone" dataKey="val" stroke="#10b981" strokeWidth={1} fillOpacity={1} fill={`url(#sparkGrad-${idx})`} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
+                {/* Bottom Row: Stats */}
                 <div className="flex items-center justify-between text-[9px] font-mono pt-3 border-t border-white/5 text-slate-500">
-                  <span>PORTS: <strong className="text-slate-300">{c.ports.split(' ')[0] || 'N/A'}</strong></span>
+                  <span className="text-slate-300 font-bold">{c.mem_mb} MB</span>
                   <span>RESTARTS: <strong className="text-slate-300">{c.restarts}</strong></span>
+                  <span className="px-1.5 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded font-black text-[8px] uppercase tracking-wider">
+                    DOCKER
+                  </span>
                 </div>
               </div>
             );
