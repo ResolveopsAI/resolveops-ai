@@ -68,12 +68,37 @@ export default function AwsHubPage() {
       const res = await fetchApi("/api/v1/aws/status");
       if (res && res.connected) {
         setStatus("connected");
-        setConnectionDetails({
+        const details = {
           name: "AWS Connection",
           account_id: res.account_id,
           default_region: res.region,
           auth_method: res.auth_method
-        });
+        };
+        setConnectionDetails(details);
+        
+        // Auto-sync resources on initial load
+        setIsRefreshing(true);
+        try {
+          const authData = {
+            auth_method: res.auth_method || "environment",
+            connection_name: "AWS Connection"
+          };
+          const syncRes = await fetchApi("/api/v1/aws/resources/sync", {
+            method: "POST",
+            body: JSON.stringify(authData)
+          });
+          if (syncRes) {
+            if (syncRes.warnings && syncRes.warnings.length > 0) {
+              setWarnings(syncRes.warnings);
+            } else {
+              setWarnings([]);
+            }
+          }
+        } catch (syncErr) {
+          console.error("Auto-sync failed", syncErr);
+        } finally {
+          setIsRefreshing(false);
+        }
         await fetchAwsResources();
       } else {
         setStatus("disconnected");
