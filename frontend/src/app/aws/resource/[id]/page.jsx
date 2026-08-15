@@ -897,64 +897,57 @@ function AwsSubResources({ subresources, resource }) {
 function AwsRuntime({ runtime, resource }) {
   const resName = (resource?.resource_name || resource?.id || "ec2-instance").toLowerCase().replace(/[^a-z0-9]/g, "-");
 
-  // Use live discovered containers from the backend SSM/agent telemetry if present,
-  // otherwise fallback to the mock templates. Note: Backend nests containers under runtime.runtime.containers
+  // Use live discovered containers from the backend SSM/agent telemetry if present.
   const liveContainers = runtime?.runtime?.containers;
   const hasLiveContainers = Array.isArray(liveContainers) && liveContainers.length > 0;
   
-  const containers = hasLiveContainers 
-    ? liveContainers.map(c => ({
-        name: c.name || c.id || "docker-container",
-        image: c.image || "unknown-image",
-        status: c.status || "running",
-        cpu_pct: c.cpu_pct !== undefined ? c.cpu_pct : parseFloat((Math.random() * 8 + 1).toFixed(1)),
-        mem_mb: c.mem_mb !== undefined ? c.mem_mb : Math.floor(Math.random() * 400 + 100),
-        mem_limit: c.mem_limit || 2048,
-        ports: c.ports || "N/A",
-        restarts: c.restarts || 0
-      }))
-    : [
-        {
-          name: `${resName}-web-app`,
-          image: `${resName}/frontend:v2.4.0`,
-          status: "running (healthy)",
-          cpu_pct: 5.2,
-          mem_mb: 320.4,
-          mem_limit: 2048,
-          ports: "80:80, 443:443 (HTTP/HTTPS)",
-          restarts: 0
-        },
-        {
-          name: `${resName}-api-server`,
-          image: `${resName}/backend-api:v2.1.0`,
-          status: "running (healthy)",
-          cpu_pct: 8.6,
-          mem_mb: 512.8,
-          mem_limit: 4096,
-          ports: "3000:3000 (REST API)",
-          restarts: 0
-        },
-        {
-          name: `${resName}-database`,
-          image: "mysql:8.0-oracle",
-          status: "running (healthy)",
-          cpu_pct: 3.4,
-          mem_mb: 840.2,
-          mem_limit: 4096,
-          ports: "3306:3306 (MySQL)",
-          restarts: 0
-        },
-        {
-          name: `${resName}-cache-layer`,
-          image: "redis:7.2-alpine",
-          status: "running (healthy)",
-          cpu_pct: 0.8,
-          mem_mb: 48.5,
-          mem_limit: 1024,
-          ports: "6379:6379 (Redis)",
-          restarts: 0
-        }
-      ];
+  const status = runtime?.status || "unavailable";
+  const message = runtime?.message || "";
+
+  if (!hasLiveContainers) {
+    return (
+      <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
+        <div className="flex items-start gap-4 mb-6 relative z-10">
+          <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-400 shrink-0">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white">SSM Workload Telemetry Offline</h3>
+            <p className="text-[10px] text-slate-500 font-mono mt-1">
+              STATUS: <strong className="text-amber-400">{status.toUpperCase()}</strong>
+            </p>
+            <p className="text-xs text-slate-300 mt-3 leading-relaxed">
+              {message || "We could not retrieve container workloads from this EC2 instance. Systems Manager (SSM) or ResolveOps Agent is required to fetch runtime telemetry."}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-[#040711] p-5 rounded-xl border border-white/5 space-y-3 relative z-10">
+          <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Telemetry Troubleshooting Checklist</h4>
+          <ol className="list-decimal pl-5 text-xs text-slate-400 space-y-2.5 font-mono leading-relaxed">
+            <li>Ensure the EC2 Instance has an IAM Instance Profile attached with the <strong className="text-sky-400">AmazonSSMManagedInstanceCore</strong> policy.</li>
+            <li>Verify the SSM Agent is installed and running on the target instance:
+              <pre className="bg-[#070b16] p-2 rounded border border-white/5 mt-1.5 text-[10px] text-slate-300">systemctl status amazon-ssm-agent</pre>
+            </li>
+            <li>Ensure Docker is running and the SSM session shell user (<code className="text-sky-400 bg-white/5 px-1 py-0.5 rounded">ssm-user</code>) has permissions:
+              <pre className="bg-[#070b16] p-2 rounded border border-white/5 mt-1.5 text-[10px] text-slate-300">sudo usermod -aG docker ssm-user</pre>
+            </li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
+
+  const containers = liveContainers.map(c => ({
+    name: c.name || c.id || "docker-container",
+    image: c.image || "unknown-image",
+    status: c.status || "running",
+    cpu_pct: c.cpu_pct !== undefined ? c.cpu_pct : parseFloat((Math.random() * 8 + 1).toFixed(1)),
+    mem_mb: c.mem_mb !== undefined ? c.mem_mb : Math.floor(Math.random() * 400 + 100),
+    mem_limit: c.mem_limit || 2048,
+    ports: c.ports || "N/A",
+    restarts: c.restarts || 0
+  }));
 
   return (
     <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">

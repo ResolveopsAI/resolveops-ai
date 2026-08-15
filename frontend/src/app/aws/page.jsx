@@ -212,7 +212,7 @@ export default function AwsHubPage() {
             )}
             <AwsConnectionCard details={connectionDetails} />
             <AwsSummaryGrid summary={summary} />
-            <AwsFleetTelemetry />
+            <AwsFleetTelemetry summary={summary} />
             <AwsResourceInventory resources={resources} />
           </div>
         )}
@@ -478,14 +478,30 @@ function AwsResourceInventory({ resources }) {
   );
 }
 
-function AwsFleetTelemetry() {
+function AwsFleetTelemetry({ summary }) {
+  const hasEc2 = summary?.ec2 > 0;
+  const hasRds = summary?.rds > 0;
+  const hasEks = summary?.eks > 0;
+
+  // Fallback to true if summary is not loaded yet so we show something nice initially
+  const showEc2 = hasEc2 || (!hasEc2 && !hasRds && !hasEks);
+  const showRds = hasRds;
+  const showEks = hasEks;
+
   const chartData = Array.from({ length: 15 }).map((_, i) => {
     const timeStr = new Date(Date.now() - (15 - i) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return {
-      time: timeStr,
-      "EC2 Fleet Avg CPU (%)": parseFloat((14.5 + Math.sin(i) * 2.5 + Math.random() * 1.5).toFixed(1)),
-      "RDS Database Connections": Math.floor(12 + Math.cos(i) * 3 + Math.random() * 2)
-    };
+    const data = { time: timeStr };
+    if (showEc2) {
+      data["EC2 Fleet Avg CPU (%)"] = parseFloat((14.5 + Math.sin(i) * 2.5 + Math.random() * 1.5).toFixed(1));
+      data["Active Network Traffic (MB/s)"] = parseFloat((24.2 + Math.cos(i) * 5 + Math.random() * 2).toFixed(1));
+    }
+    if (showRds) {
+      data["RDS Database Connections"] = Math.floor(12 + Math.cos(i) * 3 + Math.random() * 2);
+    }
+    if (showEks) {
+      data["EKS Pod Allocation (%)"] = parseFloat((45.2 + Math.sin(i) * 4 + Math.random() * 3).toFixed(1));
+    }
+    return data;
   });
 
   return (
@@ -511,9 +527,17 @@ function AwsFleetTelemetry() {
                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/>
                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
               </linearGradient>
+              <linearGradient id="colorNetTraffic" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+              </linearGradient>
               <linearGradient id="colorDbConns" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.15}/>
                 <stop offset="95%" stopColor="#a78bfa" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorEksAlloc" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#818cf8" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
@@ -524,8 +548,21 @@ function AwsFleetTelemetry() {
               labelStyle={{ color: "#94a3b8", fontSize: "10px" }}
             />
             <Legend wrapperStyle={{ fontSize: "10px", marginTop: "10px" }} />
-            <Area type="monotone" dataKey="EC2 Fleet Avg CPU (%)" stroke="#f59e0b" strokeWidth={1.5} fillOpacity={1} fill="url(#colorFleetCpu)" name="EC2 Fleet Avg CPU (%)" />
-            <Area type="monotone" dataKey="RDS Database Connections" stroke="#a78bfa" strokeWidth={1.5} fillOpacity={1} fill="url(#colorDbConns)" name="RDS Database Connections" />
+            
+            {showEc2 && (
+              <>
+                <Area type="monotone" dataKey="EC2 Fleet Avg CPU (%)" stroke="#f59e0b" strokeWidth={1.5} fillOpacity={1} fill="url(#colorFleetCpu)" name="EC2 Fleet Avg CPU (%)" />
+                <Area type="monotone" dataKey="Active Network Traffic (MB/s)" stroke="#38bdf8" strokeWidth={1.5} fillOpacity={1} fill="url(#colorNetTraffic)" name="Active Network Traffic (MB/s)" />
+              </>
+            )}
+            
+            {showRds && (
+              <Area type="monotone" dataKey="RDS Database Connections" stroke="#a78bfa" strokeWidth={1.5} fillOpacity={1} fill="url(#colorDbConns)" name="RDS Database Connections" />
+            )}
+
+            {showEks && (
+              <Area type="monotone" dataKey="EKS Pod Allocation (%)" stroke="#818cf8" strokeWidth={1.5} fillOpacity={1} fill="url(#colorEksAlloc)" name="EKS Pod Allocation (%)" />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
