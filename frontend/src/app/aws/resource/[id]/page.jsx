@@ -679,11 +679,12 @@ function AwsRuntime({ runtime, resource }) {
   const resName = (resource?.resource_name || resource?.id || "ec2-instance").toLowerCase().replace(/[^a-z0-9]/g, "-");
 
   // Use live discovered containers from the backend SSM/agent telemetry if present,
-  // otherwise fallback to the mock templates.
-  const hasLiveContainers = runtime && Array.isArray(runtime.containers) && runtime.containers.length > 0;
+  // otherwise fallback to the mock templates. Note: Backend nests containers under runtime.runtime.containers
+  const liveContainers = runtime?.runtime?.containers;
+  const hasLiveContainers = Array.isArray(liveContainers) && liveContainers.length > 0;
   
   const containers = hasLiveContainers 
-    ? runtime.containers.map(c => ({
+    ? liveContainers.map(c => ({
         name: c.name || c.id || "docker-container",
         image: c.image || "unknown-image",
         status: c.status || "running",
