@@ -3027,6 +3027,21 @@ def aws_resource_runtime(resource_id: str, current_user: dict = Depends(get_curr
         if isinstance(e, HTTPException): raise e
     return {"status": "error", "message": "Failed to connect to Intelligence Service", "runtime": {"containers": [], "processes": []}}
 
+@app.get("/api/v1/aws/resources/{resource_id:path}/containers/{container_name}/logs")
+def aws_resource_container_logs(resource_id: str, container_name: str, current_user: dict = Depends(get_current_user)):
+    import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
+    safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
+    try:
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/containers/{container_name}/logs", headers=headers, timeout=15)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        pass
+    return {"status": "error", "message": "Failed to retrieve logs from container"}
+
 @app.get("/api/v1/aws/resources/{resource_id:path}/workloads")
 def aws_resource_workloads(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests

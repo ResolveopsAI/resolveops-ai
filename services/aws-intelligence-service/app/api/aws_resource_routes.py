@@ -451,6 +451,31 @@ def generate_resource_rca(resource_id: str, x_tenant_email: Optional[str] = Head
         }
     }
 
+@router.get("/{resource_id:path}/containers/{container_name}/logs")
+def get_resource_container_logs(
+    resource_id: str,
+    container_name: str,
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
+    resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
+    resource = next((r for r in resources if r["id"] == resource_id), None)
+    
+    if not resource or "EC2" not in resource.get("resource_type", ""):
+        raise HTTPException(status_code=404, detail="Resource not found or not an EC2 instance")
+        
+    try:
+        service = AWSRuntimeService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
+        return service.get_container_logs(
+            resource_id.split("/")[-1] if "/" in resource_id else resource_id,
+            container_name,
+            resource.get("region", "us-east-1")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{resource_id:path}")
 def get_resource(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])

@@ -131,3 +131,47 @@ class AWSRuntimeService:
             result["message"] = f"Unexpected error during runtime discovery: {str(e)}"
 
         return result
+
+    def get_container_logs(self, instance_id: str, container_name: str, region: str) -> Dict:
+        """
+        Runs 'docker logs --tail 150 container_name' using SSM to retrieve live logs.
+        """
+        try:
+            ssm = self._get_client('ssm', region)
+            
+            # Resolve docker path dynamically just like we do for container check
+            script = (
+                "if command -v docker &>/dev/null; then DOCKER_CMD=\"docker\"; "
+                "elif [ -x /snap/bin/docker ]; then DOCKER_CMD=\"/snap/bin/docker\"; "
+                "elif [ -x /usr/bin/docker ]; then DOCKER_CMD=\"/usr/bin/docker\"; "
+                "elif [ -x /usr/local/bin/docker ]; then DOCKER_CMD=\"/usr/local/bin/docker\"; "
+                "else DOCKER_CMD=\"\"; fi; "
+                f"if [ -n \"$DOCKER_CMD\" ]; then $DOCKER_CMD logs --tail 150 {container_name}; "
+                "else echo 'Docker not found'; fi"
+            )
+            
+            cmd = ssm.send_command(
+                InstanceIds=[instance_id],
+                DocumentName="AWS-RunShellScript",
+                Parameters={"commands": [script]}
+            )
+            command_id = cmd['Command']['CommandId']
+            
+            # Poll for up to 3 seconds
+            invocation = None
+            for _ in range(3):
+                time.sleep(1)
+                try:
+                    inv = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+                    if inv['Status'] in ['Success', 'Failed', 'Cancelled', 'TimedOut']:
+                        invocation = inv
+                        break
+                except ClientError:
+                    pass
+            
+            if invocation and invocation['Status'] == 'Success':
+                logs = invocation['StandardOutputContent'] or invocation['StandardErrorContent'] or "No logs found."
+                return {"status": "success", "logs": logs}
+            return {"status": "error", "message": f"Failed to retrieve logs. SSM command status: {invocation['Status'] if invocation else 'TimedOut'}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

@@ -954,6 +954,9 @@ function AwsRuntime({ runtime, resource }) {
   }
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedContainer, setSelectedContainer] = useState(null);
+  const [containerLogs, setContainerLogs] = useState("");
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const containers = liveContainers.map(c => ({
     name: c.name || c.id || "docker-container",
@@ -971,6 +974,28 @@ function AwsRuntime({ runtime, resource }) {
     c.image.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const fetchLogs = async (containerName) => {
+    setLoadingLogs(true);
+    setContainerLogs("Connecting to host agent via SSM to tail logs...\n");
+    try {
+      const res = await fetchApi(`/api/v1/aws/resources/${encodeURIComponent(resource.id)}/containers/${containerName}/logs`);
+      if (res && res.status === "success") {
+        setContainerLogs(res.logs || "No logs found for this container.");
+      } else {
+        setContainerLogs(`Error: ${res?.message || "Failed to fetch logs from the host agent."}`);
+      }
+    } catch (e) {
+      setContainerLogs(`Error: Failed to connect to server to retrieve container logs.`);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleContainerClick = (container) => {
+    setSelectedContainer(container);
+    fetchLogs(container.name);
+  };
+
   // Compute aggregate stats
   const totalContainers = containers.length;
   const runningContainers = containers.filter(c => c.status.toLowerCase().includes("up") || c.status.toLowerCase().includes("run")).length;
@@ -978,112 +1003,189 @@ function AwsRuntime({ runtime, resource }) {
   const totalMem = (containers.reduce((acc, curr) => acc + curr.mem_mb, 0) / 1024).toFixed(2);
 
   return (
-    <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none transition-all duration-500" />
-      
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 relative z-10">
-        <div>
-          <h3 className="text-lg font-black text-white flex items-center gap-3">
-            <div className="p-2 bg-fuchsia-500/10 rounded-lg border border-fuchsia-500/20">
-              <Server className="w-5 h-5 text-fuchsia-400 shrink-0" />
+    <div className="space-y-6">
+      <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 relative z-10">
+          <div>
+            <h3 className="text-lg font-black text-white flex items-center gap-3">
+              <div className="p-2 bg-fuchsia-500/10 rounded-lg border border-fuchsia-500/20">
+                <Server className="w-5 h-5 text-fuchsia-400 shrink-0" />
+              </div>
+              Service Health Matrix
+            </h3>
+            <p className="text-xs text-slate-400 font-mono mt-2">
+              Docker compose containers active on <strong className="text-slate-200">{resource?.resource_name || resource?.id}</strong>
+            </p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <input 
+              type="text" 
+              placeholder="Search services..." 
+              className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-fuchsia-500/50 transition-colors w-full md:w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <span className="text-[10px] font-mono font-bold text-fuchsia-400 bg-fuchsia-500/10 px-3 py-1.5 rounded-full border border-fuchsia-500/20 uppercase tracking-widest shadow-[0_0_15px_rgba(217,70,239,0.15)] flex items-center gap-2 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+              Docker Active
+            </span>
+          </div>
+        </div>
+
+        {/* Aggregate Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 relative z-10">
+          <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+            <span className="text-[9px] text-slate-500 font-mono block mb-1">TOTAL SERVICES</span>
+            <span className="text-xl font-black font-mono text-white">{totalContainers}</span>
+          </div>
+          <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+            <span className="text-[9px] text-slate-500 font-mono block mb-1">HEALTHY / UP</span>
+            <span className="text-xl font-black font-mono text-emerald-400">{runningContainers}</span>
+          </div>
+          <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+            <span className="text-[9px] text-slate-500 font-mono block mb-1">AVG UTILISATION</span>
+            <span className="text-xl font-black font-mono text-sky-400">{avgCpu}%</span>
+          </div>
+          <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
+            <span className="text-[9px] text-slate-500 font-mono block mb-1">AGGREGATE MEMORY</span>
+            <span className="text-xl font-black font-mono text-purple-400">{totalMem} GiB</span>
+          </div>
+        </div>
+
+        {/* Service Health Grid (Custom visual style from monitoring page) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 relative z-10">
+          {filteredContainers.map((c, idx) => {
+            // Generate mini sparkline utilization points
+            const sparkData = Array.from({ length: 6 }).map((_, i) => ({
+              val: Math.max(1, parseFloat((c.cpu_pct + Math.sin(i) * 2 + Math.random()).toFixed(1)))
+            }));
+
+            return (
+              <div 
+                key={idx} 
+                onClick={() => handleContainerClick(c)}
+                className="bg-[#060914] border border-white/[0.05] hover:border-fuchsia-500/35 rounded-xl p-5 hover:shadow-[0_0_20px_rgba(217,70,239,0.06)] transition-all duration-300 cursor-pointer transform hover:-translate-y-1 relative overflow-hidden group flex flex-col justify-between"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-500/[0.01] rounded-full blur-2xl pointer-events-none group-hover:bg-fuchsia-500/[0.03] transition-all" />
+                
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                      <h4 className="text-xs font-black text-white font-mono truncate" title={c.name}>{c.name}</h4>
+                    </div>
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                      HEALTHY
+                    </span>
+                  </div>
+                  
+                  <div className="text-[10px] text-slate-500 font-mono truncate mb-4 bg-white/[0.02] px-2 py-1 rounded border border-white/5 inline-block w-full">
+                    {c.image}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-[10px] font-mono mb-4">
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">CPU</span>
+                      <span className="text-sky-400 font-black text-xs">{c.cpu_pct}%</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">MEMORY</span>
+                      <span className="text-purple-400 font-black text-xs">{c.mem_mb} MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini Sparkline Chart */}
+                <div className="h-10 w-full mb-3 select-none pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id={`sparkGrad-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#d946ef" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#d946ef" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="val" stroke="#d946ef" strokeWidth={1} fillOpacity={1} fill={`url(#sparkGrad-${idx})`} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="flex items-center justify-between text-[9px] font-mono pt-3 border-t border-white/5 text-slate-500">
+                  <span>PORTS: <strong className="text-slate-300">{c.ports.split(' ')[0] || 'N/A'}</strong></span>
+                  <span>RESTARTS: <strong className="text-slate-300">{c.restarts}</strong></span>
+                </div>
+              </div>
+            );
+          })}
+          {filteredContainers.length === 0 && (
+            <div className="col-span-full p-12 text-center text-slate-500 font-mono text-xs">
+              No matching services found.
             </div>
-            Application Workloads
-          </h3>
-          <p className="text-xs text-slate-400 font-mono mt-2">
-            Docker telemetry for <strong className="text-slate-200">{resource?.resource_name || resource?.id}</strong>
-          </p>
-        </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <input 
-            type="text" 
-            placeholder="Search containers..." 
-            className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-fuchsia-500/50 transition-colors w-full md:w-64"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <span className="text-[10px] font-mono font-bold text-fuchsia-400 bg-fuchsia-500/10 px-3 py-1.5 rounded-full border border-fuchsia-500/20 uppercase tracking-widest shadow-[0_0_15px_rgba(217,70,239,0.15)] flex items-center gap-2 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
-            Docker Active
-          </span>
+          )}
         </div>
       </div>
 
-      {/* Aggregate Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 relative z-10">
-        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
-          <span className="text-[9px] text-slate-500 font-mono block mb-1">TOTAL CONTAINERS</span>
-          <span className="text-xl font-black font-mono text-white">{totalContainers}</span>
-        </div>
-        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
-          <span className="text-[9px] text-slate-500 font-mono block mb-1">RUNNING / UP</span>
-          <span className="text-xl font-black font-mono text-emerald-400">{runningContainers}</span>
-        </div>
-        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
-          <span className="text-[9px] text-slate-500 font-mono block mb-1">AVG CONTAINER CPU</span>
-          <span className="text-xl font-black font-mono text-sky-400">{avgCpu}%</span>
-        </div>
-        <div className="bg-[#050813] border border-white/5 p-4 rounded-xl">
-          <span className="text-[9px] text-slate-500 font-mono block mb-1">AGGREGATE MEMORY</span>
-          <span className="text-xl font-black font-mono text-purple-400">{totalMem} GiB</span>
-        </div>
-      </div>
+      {/* Terminal Live Logs Modal */}
+      {selectedContainer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="glass-panel w-full max-w-4xl rounded-2xl border border-white/10 shadow-2xl flex flex-col h-[80vh] overflow-hidden bg-[#040712] relative">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#070b16] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-fuchsia-500/10 rounded border border-fuchsia-500/20 text-fuchsia-400">
+                  <Server size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-mono">{selectedContainer.name}</h3>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{selectedContainer.image}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => fetchLogs(selectedContainer.name)}
+                  disabled={loadingLogs}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-200 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+                <button 
+                  onClick={() => setSelectedContainer(null)}
+                  className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-mono text-rose-400 transition-colors"
+                >
+                  Close Console
+                </button>
+              </div>
+            </div>
 
-      {/* Compact Container Workloads Table */}
-      <div className="w-full overflow-x-auto custom-scrollbar relative z-10">
-        <table className="w-full text-left border-collapse min-w-[750px] text-xs font-mono">
-          <thead>
-            <tr className="bg-[#070b16] text-slate-400 text-[10px] uppercase tracking-wider border-b border-white/[0.08]">
-              <th className="px-4 py-3 font-bold">Container Name / Image</th>
-              <th className="px-4 py-3 font-bold">Status</th>
-              <th className="px-4 py-3 font-bold" style={{ width: "150px" }}>CPU Usage</th>
-              <th className="px-4 py-3 font-bold" style={{ width: "150px" }}>Memory footprint</th>
-              <th className="px-4 py-3 font-bold">Exposed Ports</th>
-              <th className="px-4 py-3 font-bold text-center">Restarts</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {filteredContainers.map((c, idx) => (
-              <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
-                <td className="px-4 py-3.5">
-                  <div className="text-white font-bold text-sm truncate max-w-[200px]" title={c.name}>{c.name}</div>
-                  <div className="text-[10px] text-slate-500 truncate max-w-[200px] mt-0.5" title={c.image}>{c.image}</div>
-                </td>
-                <td className="px-4 py-3.5">
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                    Running
-                  </span>
-                </td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-sky-400 font-bold">{c.cpu_pct}%</span>
-                  </div>
-                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                    <div className="bg-sky-500 h-full rounded-full" style={{ width: `${Math.min(c.cpu_pct * 8, 100)}%` }} />
-                  </div>
-                </td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center justify-between text-[10px] mb-1">
-                    <span className="text-purple-400 font-bold">{c.mem_mb} <span className="text-slate-500 font-normal">/ {c.mem_limit} MB</span></span>
-                  </div>
-                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                    <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(c.mem_mb / c.mem_limit) * 100}%` }} />
-                  </div>
-                </td>
-                <td className="px-4 py-3.5 text-slate-300 max-w-[150px] truncate" title={c.ports}>{c.ports}</td>
-                <td className="px-4 py-3.5 text-center font-bold text-slate-400">{c.restarts}</td>
-              </tr>
-            ))}
-            {filteredContainers.length === 0 && (
-              <tr>
-                <td colSpan="6" className="p-12 text-center text-slate-500 italic">
-                  No matching containers found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            {/* Terminal Window */}
+            <div className="flex-1 p-6 bg-[#020409] overflow-y-auto font-mono text-xs text-emerald-400 flex flex-col justify-start custom-scrollbar select-text">
+              {loadingLogs ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+                  <RefreshCw className="w-6 h-6 animate-spin text-fuchsia-500" />
+                  <span>Streaming stdout/stderr invocation via SSM...</span>
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap leading-relaxed text-emerald-500 font-mono break-all selection:bg-emerald-500/25">
+                  {containerLogs}
+                </pre>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-white/5 bg-[#03060d] text-[10px] text-slate-500 font-mono flex items-center justify-between shrink-0">
+              <span>Showing last 150 entries via Docker Engine stream adapter</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Connection Secure
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
