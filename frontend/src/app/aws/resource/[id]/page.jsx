@@ -17,12 +17,12 @@ const formatLocalCurrency = (usdVal, maxDigits = 2) => {
   // Check if timezone is India (UTC+5:30). Matches 'Asia/Kolkata', 'Asia/Calcutta' or timezone offset of -330
   const tz = typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
   const isIndia = tz?.includes('Kolkata') || tz?.includes('Calcutta') || (typeof window !== 'undefined' && new Date().getTimezoneOffset() === -330);
-  
+
   if (isIndia) {
     const inrVal = num * 83.0;
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: maxDigits }).format(inrVal);
   }
-  
+
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: maxDigits }).format(num);
 };
 
@@ -277,8 +277,8 @@ export default function AwsResourceDetailPage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-white tracking-tight">{resource.resource_name || resource.id}</h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${resource.status === 'running' || resource.status === 'available' || resource.status === 'active'
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                  : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1.5 animate-pulse" />
                   {resource.status || "running"}
@@ -368,24 +368,40 @@ export default function AwsResourceDetailPage() {
                       </span>
                     </div>
 
-                    <div>
-                      <p className="text-2xl font-black font-mono text-white">
-                        {formatLocalCurrency(cost.estimated_running_price?.monthly || 135.49)} <span className="text-xs text-slate-400 font-normal">/ mo</span>
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-white/5 text-xs font-mono">
-                        <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                          <span className="text-[10px] text-slate-500 block">HOURLY RATE</span>
-                          <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.hourly || 0.1856, 4)} / hr</span>
+                    {cost.estimated_running_price?.status === "available" ? (
+                      <div>
+                        <p className="text-2xl font-black font-mono text-white">
+                          {formatLocalCurrency(cost.estimated_running_price?.monthly ?? 0)} <span className="text-xs text-slate-400 font-normal">/ mo</span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-white/5 text-xs font-mono">
+                          <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                            <span className="text-[10px] text-slate-500 block">HOURLY RATE</span>
+                            <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.hourly ?? 0, 4)} / hr</span>
+                          </div>
+                          <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                            <span className="text-[10px] text-slate-500 block">DAILY COST</span>
+                            <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.daily ?? 0, 2)} / day</span>
+                          </div>
                         </div>
-                        <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                          <span className="text-[10px] text-slate-500 block">DAILY COST</span>
-                          <span className="font-bold text-sky-400">{formatLocalCurrency(cost.estimated_running_price?.daily || 4.45, 2)} / day</span>
-                        </div>
+                        {cost.estimated_running_price?.warnings?.length > 0 && (
+                          <div className="mt-2 flex items-center gap-2 text-[10px] text-amber-400 font-mono bg-amber-500/5 px-2 py-1.5 rounded-lg border border-amber-500/10">
+                            <AlertTriangle size={10} className="shrink-0" />
+                            {cost.estimated_running_price.warnings[0]}
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-400 font-mono bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                        <span className="text-slate-500">Catalog rate unavailable for this resource type.</span>
+                      </div>
+                    )}
 
                     <p className="text-[10px] text-slate-500 font-mono pt-1">
-                      Calculated for <strong className="text-slate-300">{resource.metadata?.instance_type || "t2.xlarge"}</strong> in <strong className="text-slate-300">{resource.region || "ap-south-1"}</strong>
+                      {cost.estimated_running_price?.source
+                        ? cost.estimated_running_price.source
+                        : resource.metadata?.instance_type
+                          ? <>Calculated for <strong className="text-slate-300">{resource.metadata.instance_type}</strong> in <strong className="text-slate-300">{resource.region || "ap-south-1"}</strong></>
+                          : "Pricing data not available for this resource"}
                     </p>
                   </div>
                 </div>
@@ -514,8 +530,8 @@ function AwsResourceMetadataGrid({ resource }) {
     if (value === undefined || value === null || value === "") return null;
     return (
       <div className={`p-4 rounded-xl border transition-all ${highlight
-          ? 'bg-sky-500/10 border-sky-500/30'
-          : 'bg-[#0a0f1d] border-white/10 hover:border-white/20'
+        ? 'bg-sky-500/10 border-sky-500/30'
+        : 'bg-[#0a0f1d] border-white/10 hover:border-white/20'
         }`}>
         <p className="text-[11px] text-slate-400 font-mono uppercase tracking-wider mb-1">{label}</p>
         <p className="text-sm font-semibold font-mono text-white break-all">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
@@ -644,14 +660,14 @@ function AwsResourceLogsAndEvents({ logs, logsStatus, metrics, events, resource 
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
                   </linearGradient>
                   {isEC2 && (
                     <>
                       <linearGradient id="colorNetIn" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#818cf8" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
                       </linearGradient>
                     </>
                   )}
@@ -659,7 +675,7 @@ function AwsResourceLogsAndEvents({ logs, logsStatus, metrics, events, resource 
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" />
                 <XAxis dataKey="time" stroke="rgba(255,255,255,0.3)" fontSize={10} fontClassName="font-mono" />
                 <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} fontClassName="font-mono" />
-                <ReTooltip 
+                <ReTooltip
                   contentStyle={{ backgroundColor: "#0b1025", borderColor: "rgba(255,255,255,0.08)", borderRadius: "12px" }}
                   labelClassName="text-slate-500 font-mono text-[10px] mb-1"
                 />
@@ -732,9 +748,9 @@ function AwsEksWorkloads({ workloadsData, resource }) {
 
   // Use live data if available, otherwise fallback to high-fidelity simulated workloads
   const isLive = workloadsData && workloadsData.status === "success" && workloadsData.workloads;
-  
+
   const namespaces = isLive ? workloadsData.workloads.namespaces : ["all", "kube-system", "default", "production", "monitoring"];
-  
+
   const nodes = isLive ? workloadsData.workloads.nodes : [
     { name: "ip-10-0-1-42.ap-south-1.compute.internal", status: "Ready", role: "worker", cpu: 42.5, memory: 58.2, pods: 14 },
     { name: "ip-10-0-2-89.ap-south-1.compute.internal", status: "Ready", role: "worker", cpu: 58.0, memory: 72.4, pods: 18 },
@@ -756,7 +772,7 @@ function AwsEksWorkloads({ workloadsData, resource }) {
   return (
     <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none transition-all duration-500" />
-      
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 relative z-10">
         <div>
           <h3 className="text-lg font-black text-white flex items-center gap-3">
@@ -770,7 +786,7 @@ function AwsEksWorkloads({ workloadsData, resource }) {
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <select 
+          <select
             className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500/50 transition-colors cursor-pointer"
             value={selectedNamespace}
             onChange={(e) => setSelectedNamespace(e.target.value)}
@@ -862,7 +878,8 @@ function AwsSubResources({ subresources, resource }) {
   if (!subresources) return null;
 
   const subData = subresources.subresources || {};
-  const hasItems = Object.keys(subData).some(k => subData[k] && subData[k].length > 0);
+  const volumes = Array.isArray(subData.volumes) ? subData.volumes : [];
+  const enis = Array.isArray(subData.network_interfaces) ? subData.network_interfaces : [];
 
   return (
     <div className="glass-panel p-6 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
@@ -879,42 +896,118 @@ function AwsSubResources({ subresources, resource }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-        {/* EBS Volume Attachment */}
-        <div className="p-5 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl space-y-4 hover:border-sky-500/30 hover:shadow-[0_0_20px_rgba(56,189,248,0.05)] transition-all duration-300 transform hover:-translate-y-0.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-sky-500/10 rounded border border-sky-500/20">
-                <HardDrive size={16} className="text-sky-400" />
-              </div>
-              <span className="text-sm font-bold text-white font-mono">EBS Storage Volume</span>
+      <div className="space-y-4 relative z-10">
+        {/* EBS Volumes */}
+        <div>
+          <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <HardDrive size={10} className="text-sky-500" /> EBS Storage Volumes ({volumes.length})
+          </p>
+          {volumes.length === 0 ? (
+            <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl text-xs text-slate-500 font-mono italic">
+              No EBS volumes attached to this instance.
             </div>
-            <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-1 rounded border border-white/5">vol-09206705e3ed8b539</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-3 border-t border-white/5">
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">SIZE</span><span className="text-sky-300 font-bold text-sm">80 GiB <span className="text-[10px] font-normal text-slate-400">(gp3)</span></span></div>
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">IOPS</span><span className="text-slate-200 font-bold text-sm">3000</span></div>
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">ENCRYPTION</span><span className="text-emerald-400 font-bold text-[10px]">AWS KMS</span></div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {volumes.map((vol, i) => (
+                <div key={vol.id || i} className="p-4 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl hover:border-sky-500/30 hover:shadow-[0_0_20px_rgba(56,189,248,0.05)] transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-sky-500/10 rounded border border-sky-500/20">
+                        <HardDrive size={14} className="text-sky-400" />
+                      </div>
+                      <span className="text-xs font-bold text-white font-mono">EBS Volume</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-0.5 rounded border border-white/5 truncate max-w-[130px]" title={vol.id}>{vol.id}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-2 border-t border-white/5">
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">SIZE</span>
+                      <span className="text-sky-300 font-bold text-sm">
+                        {vol.size || "—"}
+                        {vol.type && <span className="text-[10px] font-normal text-slate-400 ml-1">({vol.type})</span>}
+                      </span>
+                    </div>
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">STATE</span>
+                      <span className={`font-bold text-[10px] ${vol.state === 'in-use' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {vol.state || "—"}
+                      </span>
+                    </div>
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">ENCRYPTION</span>
+                      <span className={`font-bold text-[10px] ${vol.encrypted ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {vol.encrypted ? 'AWS KMS' : 'Unencrypted'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Network Interface Attachment */}
-        <div className="p-5 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl space-y-4 hover:border-indigo-500/30 hover:shadow-[0_0_20px_rgba(99,102,241,0.05)] transition-all duration-300 transform hover:-translate-y-0.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-indigo-500/10 rounded border border-indigo-500/20">
-                <Wifi size={16} className="text-indigo-400" />
-              </div>
-              <span className="text-sm font-bold text-white font-mono">Network Interface (ENI)</span>
+        {/* Network Interfaces */}
+        <div>
+          <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Wifi size={10} className="text-indigo-500" /> Network Interfaces / ENIs ({enis.length})
+          </p>
+          {enis.length === 0 ? (
+            <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl text-xs text-slate-500 font-mono italic">
+              No network interfaces attached to this instance.
             </div>
-            <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-1 rounded border border-white/5">eni-089409df50f364240</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-3 border-t border-white/5">
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">PRIVATE IP</span><span className="text-indigo-300 font-bold text-xs">172.31.14.193</span></div>
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">MAC ADDR</span><span className="text-slate-200 font-bold text-xs truncate" title="0a:4f:2b:81:c9:02">0a:4f:2b...</span></div>
-            <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5"><span className="text-slate-500 block mb-1 text-[9px]">STATUS</span><span className="text-emerald-400 font-bold text-[10px]">in-use</span></div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {enis.map((eni, i) => (
+                <div key={eni.id || i} className="p-4 bg-gradient-to-br from-[#0a0f1d] to-[#070b14] border border-white/5 rounded-xl hover:border-indigo-500/30 hover:shadow-[0_0_20px_rgba(99,102,241,0.05)] transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-indigo-500/10 rounded border border-indigo-500/20">
+                        <Wifi size={14} className="text-indigo-400" />
+                      </div>
+                      <span className="text-xs font-bold text-white font-mono">Network Interface (ENI)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 bg-white/[0.02] px-2 py-0.5 rounded border border-white/5 truncate max-w-[130px]" title={eni.id}>{eni.id}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono pt-2 border-t border-white/5">
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">PRIVATE IP</span>
+                      <span className="text-indigo-300 font-bold text-xs">{eni.private_ip || "—"}</span>
+                    </div>
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">MAC ADDR</span>
+                      <span className="text-slate-200 font-bold text-xs truncate" title={eni.mac_address}>
+                        {eni.mac_address ? eni.mac_address.substring(0, 8) + "..." : "—"}
+                      </span>
+                    </div>
+                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                      <span className="text-slate-500 block mb-1 text-[9px]">STATUS</span>
+                      <span className={`font-bold text-[10px] ${eni.status === 'in-use' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {eni.status || "—"}
+                      </span>
+                    </div>
+                  </div>
+                  {eni.public_ip && eni.public_ip !== 'None' && (
+                    <div className="mt-2 pt-2 border-t border-white/5">
+                      <span className="text-[9px] text-slate-500 font-mono">PUBLIC IP: </span>
+                      <span className="text-[10px] font-mono font-bold text-sky-400">{eni.public_ip}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {subresources.warnings && subresources.warnings.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {subresources.warnings.map((w, i) => (
+              <div key={i} className="flex items-center gap-2 text-[10px] text-amber-400 font-mono bg-amber-500/5 px-3 py-1.5 rounded-lg border border-amber-500/10">
+                <AlertTriangle size={10} className="shrink-0" />
+                {w}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -926,7 +1019,7 @@ function AwsRuntime({ runtime, resource }) {
   // Use live discovered containers from the backend SSM/agent telemetry if present.
   const liveContainers = runtime?.runtime?.containers;
   const hasLiveContainers = Array.isArray(liveContainers) && liveContainers.length > 0;
-  
+
   const status = runtime?.status || "unavailable";
   const message = runtime?.message || "";
 
@@ -980,7 +1073,7 @@ function AwsRuntime({ runtime, resource }) {
     restarts: c.restarts || 0
   }));
 
-  const filteredContainers = containers.filter(c => 
+  const filteredContainers = containers.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.image.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -1017,7 +1110,7 @@ function AwsRuntime({ runtime, resource }) {
     <div className="space-y-6">
       <div className="glass-panel p-6 lg:p-8 rounded-2xl border border-white/[0.1] shadow-2xl relative overflow-hidden group">
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-fuchsia-500/5 rounded-full blur-3xl -mr-32 -mb-32 pointer-events-none" />
-        
+
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 relative z-10">
           <div>
             <h3 className="text-lg font-black text-white flex items-center gap-3">
@@ -1031,9 +1124,9 @@ function AwsRuntime({ runtime, resource }) {
             </p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <input 
-              type="text" 
-              placeholder="Search services..." 
+            <input
+              type="text"
+              placeholder="Search services..."
               className="bg-[#060914] border border-white/10 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-fuchsia-500/50 transition-colors w-full md:w-64"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -1074,13 +1167,13 @@ function AwsRuntime({ runtime, resource }) {
             }));
 
             return (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 onClick={() => handleContainerClick(c)}
                 className="bg-[#060914] border border-white/[0.04] hover:border-emerald-500/35 rounded-xl p-4 hover:shadow-[0_0_15px_rgba(16,185,129,0.05)] transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 relative overflow-hidden group flex flex-col justify-between min-h-[220px]"
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/[0.005] rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/[0.02] transition-all" />
-                
+
                 <div>
                   {/* Top Row: Name and Status */}
                   <div className="flex items-center justify-between mb-0.5">
@@ -1090,7 +1183,7 @@ function AwsRuntime({ runtime, resource }) {
                       HEALTHY
                     </span>
                   </div>
-                  
+
                   {/* Subtitle */}
                   <div className="text-[9px] text-slate-500 font-mono truncate mb-3" title={c.image}>
                     {c.image}
@@ -1125,8 +1218,8 @@ function AwsRuntime({ runtime, resource }) {
                     <AreaChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id={`sparkGrad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <Area type="monotone" dataKey="val" stroke="#10b981" strokeWidth={1} fillOpacity={1} fill={`url(#sparkGrad-${idx})`} />
@@ -1157,7 +1250,7 @@ function AwsRuntime({ runtime, resource }) {
       {selectedContainer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="glass-panel w-full max-w-4xl rounded-2xl border border-white/10 shadow-2xl flex flex-col h-[80vh] overflow-hidden bg-[#040712] relative">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#070b16] shrink-0">
               <div className="flex items-center gap-3">
@@ -1170,7 +1263,7 @@ function AwsRuntime({ runtime, resource }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => fetchLogs(selectedContainer.name)}
                   disabled={loadingLogs}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-slate-200 transition-colors disabled:opacity-50"
@@ -1178,7 +1271,7 @@ function AwsRuntime({ runtime, resource }) {
                   <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
                   Refresh
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedContainer(null)}
                   className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-mono text-rose-400 transition-colors"
                 >
