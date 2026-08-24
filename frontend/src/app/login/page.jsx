@@ -46,6 +46,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [regRole, setRegRole] = useState("user");
   const [adminSecret, setAdminSecret] = useState("");
+  const [showAdminSecret, setShowAdminSecret] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
   const handleRequestOtp = async (e) => {
@@ -112,8 +113,11 @@ function RegisterForm() {
               </label>
               <div className="relative">
                 <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
-                <input id="reg-admin-secret" className={inputCls + " pl-9 border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/25"} 
-                  type="password" placeholder="Enter secure invite code" value={adminSecret} onChange={e => setAdminSecret(e.target.value)} required={regRole === "admin"} />
+                <input id="reg-admin-secret"
+                  type={showAdminSecret ? "text" : "password"} placeholder="Enter secure invite code" value={adminSecret} onChange={e => setAdminSecret(e.target.value)} required={regRole === "admin"} className={inputCls + " pl-9 pr-10 border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/25"} />
+                <button type="button" onClick={() => setShowAdminSecret(!showAdminSecret)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label={showAdminSecret ? "Hide admin invite code" : "Show admin invite code"}>
+                  {showAdminSecret ? <EyeOff size={15}/> : <Eye size={15}/>}
+                </button>
               </div>
             </div>
           )}
