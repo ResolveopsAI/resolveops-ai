@@ -99,7 +99,7 @@ export default function AICopilot() {
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
     if (!token) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     const payload = decodeJwtPayload(token);
@@ -293,8 +293,8 @@ export default function AICopilot() {
 
   return (
     <DashboardLayout>
-      {/* Workspace container - occupies remaining width smoothly without double sidebar */}
-      <div className="flex flex-col h-[calc(100vh-2rem)] -m-6 overflow-hidden bg-[#060610] min-w-0">
+      {/* Workspace container - fills the <main> content area exactly (undoes p-5 padding) */}
+      <div className="flex flex-col h-full -m-5 overflow-hidden bg-[#060610] min-w-0">
         
         {/* Header */}
         <ChatHeader

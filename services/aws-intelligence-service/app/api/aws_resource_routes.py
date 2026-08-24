@@ -146,8 +146,29 @@ def get_resources(x_tenant_email: Optional[str] = Header(None)):
 
 # Moved get_resource to the bottom to avoid path shadowing
 
+def _get_auth_kwargs(
+    x_aws_access_key_id: Optional[str] = None,
+    x_aws_secret_access_key: Optional[str] = None,
+    x_aws_session_token: Optional[str] = None
+) -> dict:
+    auth_kwargs = {}
+    if x_aws_access_key_id and x_aws_secret_access_key:
+        auth_kwargs = {
+            'aws_access_key_id': x_aws_access_key_id,
+            'aws_secret_access_key': x_aws_secret_access_key
+        }
+        if x_aws_session_token:
+            auth_kwargs['aws_session_token'] = x_aws_session_token
+    return auth_kwargs
+
 @router.get("/{resource_id:path}/cost")
-def get_resource_cost(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_cost(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -166,7 +187,7 @@ def get_resource_cost(resource_id: str, x_tenant_email: Optional[str] = Header(N
         }
         
     try:
-        service = AWSCostService({})
+        service = AWSCostService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         return service.get_resource_cost(resource)
     except Exception:
         return {
@@ -183,7 +204,13 @@ def get_resource_cost(resource_id: str, x_tenant_email: Optional[str] = Header(N
         }
 
 @router.get("/{resource_id:path}/risks")
-def get_resource_risks(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_risks(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -191,14 +218,20 @@ def get_resource_risks(resource_id: str, x_tenant_email: Optional[str] = Header(
         return {"status": "success", "risks": []}
         
     try:
-        service = AWSRiskAnalysisService({})
+        service = AWSRiskAnalysisService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         risks = service.analyze_resource(resource)
         return {"status": "success", "risks": risks}
     except Exception:
         return {"status": "success", "risks": []}
 
 @router.get("/{resource_id:path}/logs")
-def get_resource_logs(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_logs(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -212,14 +245,20 @@ def get_resource_logs(resource_id: str, x_tenant_email: Optional[str] = Header(N
         return fallback
         
     try:
-        service = AWSCloudWatchService({})
+        service = AWSCloudWatchService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         logs = service.fetch_recent_logs(resource_id, resource.get("region", "us-east-1"))
         return {"status": "success", "logs": logs}
     except Exception:
         return fallback
 
 @router.get("/{resource_id:path}/metrics")
-def get_resource_metrics(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_metrics(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -227,7 +266,7 @@ def get_resource_metrics(resource_id: str, x_tenant_email: Optional[str] = Heade
         return {"status": "success", "metrics": []}
         
     try:
-        service = AWSCloudWatchService({})
+        service = AWSCloudWatchService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         metrics = service.fetch_metrics(
             resource_id, 
             resource.get("resource_type", ""),
@@ -238,7 +277,13 @@ def get_resource_metrics(resource_id: str, x_tenant_email: Optional[str] = Heade
         return {"status": "success", "metrics": []}
 
 @router.get("/{resource_id:path}/workloads")
-def get_eks_workloads(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_eks_workloads(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -248,15 +293,24 @@ def get_eks_workloads(resource_id: str, x_tenant_email: Optional[str] = Header(N
     if "EKS" not in resource.get("resource_type", ""):
         raise HTTPException(status_code=400, detail="Resource is not an EKS cluster")
         
-    service = AWSEKSVisibilityService({})
-    return service.get_cluster_workloads(resource.get("resource_name"), resource.get("region", "us-east-1"))
+    try:
+        service = AWSEKSVisibilityService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
+        return service.get_cluster_workloads(resource.get("resource_name"), resource.get("region", "us-east-1"))
+    except Exception as e:
+        return {"status": "permission_required", "message": str(e), "workloads": {}}
 
 @router.get("/{resource_id:path}/events")
 def get_resource_events(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
     return {"status": "success", "events": []}
 
 @router.get("/{resource_id:path}/subresources")
-def get_resource_subresources(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_subresources(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -269,7 +323,7 @@ def get_resource_subresources(resource_id: str, x_tenant_email: Optional[str] = 
         return fallback
         
     try:
-        service = AWSSubResourceService({})
+        service = AWSSubResourceService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         return service.get_subresources(
             resource.get("resource_type", ""),
             resource_id,
@@ -280,7 +334,13 @@ def get_resource_subresources(resource_id: str, x_tenant_email: Optional[str] = 
         return fallback
 
 @router.get("/{resource_id:path}/runtime")
-def get_resource_runtime(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_runtime(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -291,20 +351,31 @@ def get_resource_runtime(resource_id: str, x_tenant_email: Optional[str] = Heade
         "host_metrics": {}
     }
     
-    if not resource or "EC2" not in resource.get("resource_type", ""):
+    if not resource or resource.get("resource_type") != "AWS::EC2::Instance":
         return fallback
         
     try:
-        service = AWSRuntimeService({})
+        service = AWSRuntimeService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
         return service.get_ec2_runtime(
             resource_id.split("/")[-1] if "/" in resource_id else resource_id,
             resource.get("region", "us-east-1")
         )
-    except Exception:
-        return fallback
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Unexpected error during runtime discovery: {str(e)}",
+            "containers": [],
+            "host_metrics": {}
+        }
 
 @router.get("/{resource_id:path}/relationships")
-def get_resource_relationships(resource_id: str, x_tenant_email: Optional[str] = Header(None)):
+def get_resource_relationships(
+    resource_id: str, 
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
     resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
     resource = next((r for r in resources if r["id"] == resource_id), None)
     
@@ -315,7 +386,7 @@ def get_resource_relationships(resource_id: str, x_tenant_email: Optional[str] =
     meta = resource.get("metadata", {})
     res_type = resource.get("resource_type", "")
     
-    if "EC2" in res_type:
+    if res_type == "AWS::EC2::Instance":
         if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
         if meta.get("subnet_id"): relationships.append({"type": "Subnet", "id": meta.get("subnet_id")})
         if meta.get("public_ip"): relationships.append({"type": "Public IP", "id": meta.get("public_ip")})
@@ -324,7 +395,7 @@ def get_resource_relationships(resource_id: str, x_tenant_email: Optional[str] =
             relationships.append({"type": "SecurityGroup", "id": sg.get("GroupId", sg)})
             
         try:
-            sub_service = AWSSubResourceService({})
+            sub_service = AWSSubResourceService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
             sub_res = sub_service.get_subresources(res_type, resource_id, resource.get("resource_name", ""), resource.get("region", "us-east-1"))
             
             if sub_res.get("status") in ["success", "partial_success"]:
@@ -336,6 +407,12 @@ def get_resource_relationships(resource_id: str, x_tenant_email: Optional[str] =
                     relationships.append({"type": "Network Interface", "id": e.get("id")})
         except Exception:
             pass
+            
+    elif res_type == "AWS::EC2::SecurityGroup":
+        if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
+        
+    elif res_type in ["AWS::EC2::VPC", "AWS::EC2::Subnet"]:
+        if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
     
     elif "LoadBalancer" in res_type:
         if meta.get("vpc_id"): relationships.append({"type": "VPC", "id": meta.get("vpc_id")})
@@ -379,6 +456,31 @@ def generate_resource_rca(resource_id: str, x_tenant_email: Optional[str] = Head
             "data_sources_used": ["CloudWatch Metrics", "EC2 Metadata", "Systems Manager"]
         }
     }
+
+@router.get("/{resource_id:path}/containers/{container_name}/logs")
+def get_resource_container_logs(
+    resource_id: str,
+    container_name: str,
+    x_tenant_email: Optional[str] = Header(None),
+    x_aws_access_key_id: Optional[str] = Header(None),
+    x_aws_secret_access_key: Optional[str] = Header(None),
+    x_aws_session_token: Optional[str] = Header(None)
+):
+    resources = _db_cache.get(x_tenant_email, {}).get("resources", [])
+    resource = next((r for r in resources if r["id"] == resource_id), None)
+    
+    if not resource or "EC2" not in resource.get("resource_type", ""):
+        raise HTTPException(status_code=404, detail="Resource not found or not an EC2 instance")
+        
+    try:
+        service = AWSRuntimeService(_get_auth_kwargs(x_aws_access_key_id, x_aws_secret_access_key, x_aws_session_token))
+        return service.get_container_logs(
+            resource_id.split("/")[-1] if "/" in resource_id else resource_id,
+            container_name,
+            resource.get("region", "us-east-1")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{resource_id:path}")
 def get_resource(resource_id: str, x_tenant_email: Optional[str] = Header(None)):

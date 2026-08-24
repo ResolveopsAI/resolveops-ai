@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import os
 import re
 import json
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from uuid import uuid4
 from app.schemas.investigation import ChatRequest
 from ai_rca_service import PredictiveEngine
@@ -293,126 +293,251 @@ Generate your analysis in valid JSON format with the following keys:
     raise HTTPException(status_code=500, detail="No valid AI provider configured")
 
 
+
+# ── Multilingual, context-aware SRE system prompt ───────────────────────────
+_CHAT_SYSTEM_PROMPT = """You are the ResolveOps AI Copilot — an intelligent, conversational Site Reliability
+and DevSecOps assistant embedded inside the ResolveOps platform.
+
+═══════════════════════════════════════════════════════════════
+🌍 MULTILINGUAL RULE — THIS IS MANDATORY:
+Detect the language of the user's message and ALWAYS reply in that exact same language.
+- If the user writes in Hindi → reply in Hindi
+- If the user writes in Tamil → reply in Tamil  
+- If the user writes in Spanish → reply in Spanish
+- If the user writes in Arabic → reply in Arabic
+- If the user writes in French → reply in French
+- If the user writes in English → reply in English
+NEVER switch languages mid-conversation unless the user does first.
+Technical terms (AWS, EC2, Docker, Kubernetes, etc.) can remain in English even in non-English responses.
+═══════════════════════════════════════════════════════════════
+
+You are connected to live AWS, Azure, GitHub, Docker, and Kubernetes infrastructure.
+Your role is to help engineers understand, diagnose, and resolve operational issues.
+
+DOMAINS YOU COVER:
+- Cloud Infrastructure: AWS EC2, VPCs, RDS, S3, EKS, CloudWatch, Azure VMs, Resource Groups, Monitor
+- Container orchestration: Docker Compose services, Kubernetes pods, nodes, namespaces, deployments
+- CI/CD pipelines: GitHub Actions workflows, deployment failures, pipeline analysis
+- Incident investigation: Root cause analysis from logs, metrics, and traces
+- Cost optimization: AWS Cost Explorer, Azure billing, resource spending analysis
+- Security: IAM policies, security groups, network policies, audit logs, compliance
+- Architecture: Best practices for SRE, reliability engineering, scaling, observability
+- DevOps tooling: Terraform, Helm, Prometheus, Grafana, ELK stack, Datadog
+
+═══════════════════════════════════════════════════════════════
+📏 RESPONSE LENGTH INTELLIGENCE — CRITICAL:
+Match your response length EXACTLY to the nature of the question:
+
+• Greeting ("Hi", "Hello", "Namaste", "Hola") → 2-3 sentences MAX. Introduce yourself, ask what they need.
+• Simple yes/no question → Answer directly in 1-2 sentences.
+• Short factual question → Short factual answer, 2-4 sentences.
+• Specific error/log → Focused diagnosis: cause + fix. No padding.
+• "How does X work?" → Moderate explanation with structure, not an essay.
+• "Explain X in detail" or complex RCA → Thorough structured response with headers/bullets.
+
+NEVER pad responses with unnecessary filler, disclaimers, or generic advice not asked for.
+NEVER repeat the user's question back to them.
+NEVER start with "Great question!" or similar filler phrases.
+═══════════════════════════════════════════════════════════════
+
+BEHAVIORAL RULES:
+1. Respond in the user's language (see MULTILINGUAL RULE above).
+2. Match response length to question complexity (see RESPONSE LENGTH INTELLIGENCE above).
+3. Be direct and precise — give the answer, not a description of what you'll do.
+4. For greetings: 1-2 sentence warm intro + ask what they're working on. That's it.
+5. For follow-up questions: stay in context of the conversation, don't re-introduce yourself.
+6. For log/error dumps: identify the specific error, root cause, and concrete fix steps.
+7. For "what can you do?" questions: give a brief bullet list of capabilities.
+8. If live data isn't available (specific CPU %, real metrics): say so in one sentence, explain how to get it.
+9. REFUSE only genuinely off-topic requests (cooking, politics, sports, entertainment, gossip).
+   When refusing, do so briefly and in the user's language. Don't lecture.
+10. For DevSecOps questions in ANY language — always help.
+
+Use markdown (code blocks, bullet points, headers) only when it genuinely improves clarity.
+Short conversational replies should be plain text, not forced into bullet lists.
+"""
+
+
+def _call_llm(messages: list, request_id: str) -> str:
+    """
+    Call the configured LLM (OpenAI, Groq, or Bedrock) with a list of messages.
+    Returns the assistant's reply as a string.
+    Supports OpenAI, Groq, and Amazon Bedrock providers.
+    All providers support multilingual responses natively.
+    """
+    ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+
+    if ai_provider in ("openai", "openai_compatible"):
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_BASE_URL")
+        model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME")
+        if not api_key or not model:
+            raise ValueError("OpenAI credentials not configured (OPENAI_API_KEY / OPENAI_MODEL missing)")
+        from langchain_openai import ChatOpenAI
+        from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+        chat = ChatOpenAI(api_key=api_key, base_url=base_url, model=model, temperature=0.5)
+        lc_messages = []
+        for m in messages:
+            if m["role"] == "system":
+                lc_messages.append(SystemMessage(content=m["content"]))
+            elif m["role"] == "user":
+                lc_messages.append(HumanMessage(content=m["content"]))
+            elif m["role"] == "assistant":
+                lc_messages.append(AIMessage(content=m["content"]))
+        res = chat.invoke(lc_messages)
+        return getattr(res, "content", str(res))
+
+    elif ai_provider == "groq":
+        api_key = os.getenv("GROQ_API_KEY")
+        model = os.getenv("GROQ_MODEL_NAME", "llama-3.1-70b-versatile")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY not configured")
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+        chat = ChatGroq(api_key=api_key, model=model, temperature=0.5)
+        lc_messages = []
+        for m in messages:
+            if m["role"] == "system":
+                lc_messages.append(SystemMessage(content=m["content"]))
+            elif m["role"] == "user":
+                lc_messages.append(HumanMessage(content=m["content"]))
+            elif m["role"] == "assistant":
+                lc_messages.append(AIMessage(content=m["content"]))
+        res = chat.invoke(lc_messages)
+        return getattr(res, "content", str(res))
+
+    elif ai_provider == "bedrock":
+        try:
+            import boto3
+            from langchain_aws import ChatBedrock
+            from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+            region = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+            model_id = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+            client = boto3.client("bedrock-runtime", region_name=region)
+            chat = ChatBedrock(client=client, model_id=model_id, model_kwargs={"temperature": 0.5})
+            lc_messages = []
+            for m in messages:
+                if m["role"] == "system":
+                    lc_messages.append(SystemMessage(content=m["content"]))
+                elif m["role"] == "user":
+                    lc_messages.append(HumanMessage(content=m["content"]))
+                elif m["role"] == "assistant":
+                    lc_messages.append(AIMessage(content=m["content"]))
+            res = chat.invoke(lc_messages)
+            return getattr(res, "content", str(res))
+        except Exception as e:
+            raise ValueError(f"Bedrock invocation failed: {e}")
+
+    raise ValueError(f"No valid AI provider configured (AI_PROVIDER={ai_provider})")
+
+
 @app.post("/api/v1/rca/chat")
 def chat_rca(req: ChatRequest):
-    """Chat adapter with intent classification and routing.
-
-    Intents supported:
-      - greeting: short salutations -> canned reply
-      - code_gen: Terraform/code generation -> code-generation flow
-      - rca: root-cause analysis -> if message contains log-like content invoke analyze_rca,
-             otherwise ask a clarifying question requesting logs/time-window/service
     """
+    Dynamic AI chat endpoint — multilingual, context-aware, length-intelligent.
+
+    - Every message goes to the real LLM (no hardcoded responses)
+    - Detects user's language and responds in the same language
+    - Response length matches question complexity
+    - Conversation history is included for multi-turn context
+    """
+    import re as _re
+    from uuid import uuid4 as _uuid4
 
     msg = (req.message or "").strip()
+    request_id = str(_uuid4())
 
-    def classify_intent(text: str) -> str:
-        t = text.strip().lower()
-        if not t:
-            return "greeting"
-        # greetings or very short
-        if re.fullmatch(r"^(hi|hello|hey|yo|h[ie]llo)([!.]?|\s*)$", t) or len(t) < 4:
-            return "greeting"
-        # code generation / terraform keywords
-        code_kw = ["terraform", "tf", "vm", "virtual machine", "azure", "create a vm", "generate a terraform", "terraform script", "create a virtual machine"]
-        for kw in code_kw:
-            if kw in t:
-                return "code_gen"
-        # default to rca
-        return "rca"
-
-    def looks_like_logs(text: str) -> bool:
-        # Heuristics: timestamps, ERROR/WARN, stack traces, multiple lines
-        if "error" in text.lower() or "exception" in text.lower() or "traceback" in text.lower():
-            return True
-        if re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", text):
-            return True
-        if "WARN" in text or "ERROR" in text:
-            return True
-        if "\n" in text and len(text.splitlines()) > 1:
-            return True
-        return False
-
-    intent = classify_intent(msg)
-
-    # Greeting -> canned reply
-    if intent == "greeting":
+    if not msg:
         return {
             "status": "success",
-            "answer": "Hi — I can help with Root Cause Analysis, Terraform code generation, or operational guidance. What would you like me to do? (e.g., 'Analyze logs for service X' or 'Generate Terraform to create an Azure VM')",
-            "execution": {"requestId": str(uuid4())},
-            "execution_path": "greeting",
+            "answer": "It looks like you sent an empty message. What can I help you with?",
+            "execution": {"requestId": request_id},
+            "execution_path": "empty_input",
             "provider": "assistant",
             "model": "local",
         }
 
-    # Code generation -> return sample Terraform or call code-generation flow
-    if intent == "code_gen":
-        # If OpenAI-compatible configured, attempt generative response; otherwise return simple template
-        try:
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            openai_base = os.getenv("OPENAI_BASE_URL")
-            openai_model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME")
-            if openai_api_key and openai_model:
-                from langchain_openai import ChatOpenAI
-                from langchain_core.messages import SystemMessage, HumanMessage
+    # ── Lightweight guardrail: only block obvious non-ops English patterns ────
+    # Non-English messages bypass this entirely — the LLM handles scope itself.
+    # This prevents false positives on legitimate DevOps questions in other languages.
+    ops_keywords = [
+        "cluster", "pod", "container", "docker", "kubernetes", "k8s", "aws", "azure", "gcp",
+        "ec2", "s3", "deployment", "service", "logs", "metric", "cpu", "memory", "disk",
+        "network", "ingress", "vpc", "vnet", "subnet", "rca", "incident", "alert", "error",
+        "exception", "pipeline", "github", "workflow", "ci/cd", "mcp", "telemetry", "cost",
+        "billing", "cloudwatch", "devops", "sre", "build", "api", "database", "postgres",
+        "redis", "terraform", "helm", "grafana", "prometheus", "nginx", "load balancer",
+        "autoscaling", "lambda", "serverless", "microservice", "kubectl", "namespace"
+    ]
+    # Only apply English-language guardrail patterns when the message appears to be English
+    # (contains mostly ASCII chars — non-English scripts bypass to LLM automatically)
+    msg_lower = msg.lower()
+    is_mostly_ascii = sum(1 for c in msg if ord(c) < 128) / max(len(msg), 1) > 0.85
+    is_ops = any(kw in msg_lower for kw in ops_keywords)
 
-                chat = ChatOpenAI(api_key=openai_api_key, base_url=openai_base, model=openai_model, temperature=0.1)
-                prompt = (
-                    "You are a helpful assistant that generates Terraform HCL. "
-                    "Produce a minimal, runnable Terraform configuration to create an Azure virtual machine using the AzureRM provider. "
-                    "Return only the HCL code without commentary."
-                )
-                res = chat.invoke([SystemMessage(content=prompt), HumanMessage(content=msg)])
-                code = getattr(res, "content", str(res))
-                return {
-                    "status": "success",
-                    "answer": code,
-                    "execution": {"requestId": str(uuid4())},
-                    "execution_path": "code_gen",
-                    "provider": "openai",
-                    "model": openai_model,
-                }
-        except Exception:
-            # Fall back to a minimal Terraform template
-            template = (
-                'provider "azurerm" {\n  features {}\n}\n\nresource "azurerm_resource_group" "rg" {\n  name     = "example-rg"\n  location = "East US"\n}\n\nresource "azurerm_virtual_machine" "vm" {\n  name                  = "example-vm"\n  location              = azurerm_resource_group.rg.location\n  resource_group_name   = azurerm_resource_group.rg.name\n  network_interface_ids = []\n  vm_size               = "Standard_DS1_v2"\n\n  storage_os_disk {\n    name              = "osdisk"\n    caching           = "ReadWrite"\n    create_option     = "FromImage"\n    managed_disk_type = "Standard_LRS"\n  }\n\n  os_profile {\n    computer_name  = "hostname"\n    admin_username = "azureuser"\n    admin_password = "P@ssw0rd1234!"\n  }\n}\n'
-            )
-            return {"status": "success", "answer": template, "execution": {"requestId": str(uuid4())}, "execution_path": "code_gen", "provider": "local", "model": "template"}
+    if is_mostly_ascii and not is_ops:
+        # Only block clearly off-topic English queries
+        strict_off_topic = [
+            r"\brecipe for\b",
+            r"\bhow to cook\b",
+            r"\btell me a (joke|riddle|story)\b",
+            r"\bwrite a (poem|essay|fiction|song)\b",
+            r"\bwho won the (world cup|ipl|super bowl|match)\b",
+            r"\bwhat is the capital of\b",
+        ]
+        for pattern in strict_off_topic:
+            if _re.search(pattern, msg_lower):
+                # Let the LLM give the refusal in a natural way
+                # (it will be brief and in the user's language per the system prompt)
+                break
+        # Note: we don't hard-block here — the LLM's system prompt handles the refusal
+        # gracefully. Hard-blocking causes worse UX than a polite LLM refusal.
 
-    # RCA intent
-    if intent == "rca":
-        # If input looks like logs, pass to analyze flow
-        if looks_like_logs(msg) and len(msg) > 30:
-            try:
-                analyze_req = AnalyzeRequest(source="chat", context=req.message, logs=req.message)
-                result = analyze_rca(analyze_req)
-                if isinstance(result, dict) and result.get("status") == "success":
-                    analysis = result.get("analysis", {})
-                    summary = analysis.get("summary") or ""
-                    probable = analysis.get("probable_root_cause") or ""
-                    fixes = analysis.get("recommended_fix") or []
-                    parts = []
-                    if summary:
-                        parts.append(f"Summary: {summary}")
-                    if probable:
-                        parts.append(f"Probable root cause: {probable}")
-                    if fixes:
-                        parts.append("Recommended fixes:\n" + "\n".join([f"- {f}" for f in fixes]))
-                    answer_text = "\n\n".join(parts) if parts else analysis.get("answer") or "No analysis available."
-                    return {"status": "success", "answer": answer_text, "execution": {"requestId": str(uuid4())}, "execution_path": "ai_rca_chat", "provider": os.getenv("AI_PROVIDER", "openai"), "model": os.getenv("OPENAI_MODEL", "unknown")}
-                return {"status": "error", "error": {"message": "AI analysis temporarily unavailable"}}
-            except HTTPException as he:
-                return {"status": "error", "error": {"message": str(he.detail)}}
-            except Exception:
-                return {"status": "error", "error": {"message": "Internal AI error"}}
 
-        # Ask clarifying question when logs are missing
+
+    # Build the message list for the LLM
+    messages = [{"role": "system", "content": _CHAT_SYSTEM_PROMPT}]
+
+    # Include previous messages from history if provided
+    if hasattr(req, "history") and req.history:
+        for h in req.history[-10:]:  # cap at last 10 turns for context
+            if isinstance(h, dict) and h.get("role") and h.get("content"):
+                messages.append({"role": h["role"], "content": h["content"]})
+
+    messages.append({"role": "user", "content": msg})
+
+    # Call the real LLM
+    try:
+        ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+        model = (
+            os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_MODEL_NAME") or
+            os.getenv("GROQ_MODEL_NAME") or
+            os.getenv("BEDROCK_MODEL_ID") or "unknown"
+        )
+        answer = _call_llm(messages, request_id)
         return {
             "status": "success",
-            "answer": "I can run root-cause analysis, but I need logs or more context. Please provide relevant log lines, the affected service name, and the approximate time window (e.g., last 30 minutes). Would you like to paste logs now?",
-            "execution": {"requestId": str(uuid4())},
-            "execution_path": "clarifying_question",
-            "provider": "assistant",
-            "model": "local",
+            "answer": answer,
+            "execution": {"requestId": request_id},
+            "execution_path": "ai_chat_dynamic",
+            "provider": ai_provider,
+            "model": model,
         }
+    except Exception as e:
+        # LLM failed — give a helpful error rather than a canned response
+        err_msg = str(e)
+        # Don't expose raw API keys or internal details
+        if "api_key" in err_msg.lower() or "apikey" in err_msg.lower():
+            err_msg = "AI provider credentials are not configured. Please contact the administrator."
+        elif "connection" in err_msg.lower() or "timeout" in err_msg.lower():
+            err_msg = "The AI service is temporarily unreachable. Please try again in a moment."
+        
+        return {
+            "status": "error",
+            "answer": f"I'm having trouble connecting to the AI provider right now. {err_msg}",
+            "execution": {"requestId": request_id},
+            "execution_path": "ai_chat_error",
+            "provider": os.getenv("AI_PROVIDER", "openai"),
+            "model": "error",
+        }
+

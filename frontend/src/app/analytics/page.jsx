@@ -57,7 +57,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const token = localStorage.getItem("jwt_token");
     if (!token) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     

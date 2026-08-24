@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserRole } from "@/lib/api";
 import {
   Mail, ShieldCheck, ArrowRight, Eye, EyeOff, CheckCircle2,
   Activity, GitBranch, Cloud, Server, Zap, Lock, User
@@ -171,6 +171,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
+
+  // Redirect already-authenticated users away from the login page
+  useEffect(() => {
+    const token = localStorage.getItem("jwt_token");
+    if (token) {
+      const role = getUserRole();
+      router.replace(role === "admin" ? "/" : "/chat");
+    }
+  }, [router]);
 
   const handleLogin = async (e) => {
     e.preventDefault(); setError(""); setLoading(true);

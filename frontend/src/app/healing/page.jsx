@@ -130,7 +130,7 @@ export default function HealingDashboard() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" && localStorage.getItem("jwt_token");
-    if (!token) { router.push("/login"); return; }
+    if (!token) { router.replace("/login"); return; }
     loadData();
   }, [router, loadData]);
 

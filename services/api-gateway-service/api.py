@@ -111,6 +111,7 @@ class ChatRequest(BaseModel):
     message: str
     image_base64: Optional[str] = None
     session_id: Optional[str] = None
+    history: Optional[list] = None  # Optional client-side history for multi-turn context
 
 class ChatResponse(BaseModel):
     answer: str
@@ -413,6 +414,18 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
     # ── Path A: Forward to AI-RCA service ────────────────────────────────────
     if _AI_RCA_CHAT_ENABLED:
         try:
+            # Fetch recent conversation history for multi-turn context
+            conversation_history = []
+            try:
+                recent_msgs = get_chat_history(tenant_id=tenant_id, session_id=session_id, limit=10)
+                for m in recent_msgs:
+                    role = m.get("role", "user")
+                    content = m.get("content", "")
+                    if role in ("user", "assistant") and content:
+                        conversation_history.append({"role": role, "content": content})
+            except Exception:
+                pass  # History fetch is best-effort
+
             async with httpx.AsyncClient(timeout=90) as client:
                 rca_resp = await client.post(
                     f"{_AI_RCA_SERVICE_URL}/api/v1/rca/chat",
@@ -422,6 +435,7 @@ async def chat_endpoint(request: ChatRequest, current_user: dict = Depends(get_c
                         "tenant_id": tenant_id,
                         "tenant_email": tenant_email,
                         "image_base64": request.image_base64,
+                        "history": conversation_history,
                     },
                 )
 
@@ -2944,10 +2958,22 @@ def aws_resources_sync(req: Request, current_user: dict = Depends(get_current_us
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def get_aws_headers(tenant_email: str) -> dict:
+    creds = get_aws_credentials_for_tenant(tenant_email)
+    return {
+        "x-tenant-email": tenant_email,
+        "x-aws-access-key-id": creds.get("access_key_id") or "",
+        "x-aws-secret-access-key": creds.get("secret_access_key") or "",
+        "x-aws-session-token": creds.get("session_token") or "",
+        "x-aws-region": creds.get("region") or creds.get("default_region") or "us-east-1"
+    }
+
 @app.get("/api/v1/aws/resources")
 def aws_resources(current_user: dict = Depends(get_current_user)):
     import requests
-    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources", timeout=10)
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
+    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources", headers=headers, timeout=10)
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail="Failed to fetch resources")
     return res.json()
@@ -2955,11 +2981,12 @@ def aws_resources(current_user: dict = Depends(get_current_user)):
 @app.get("/api/v1/aws/resources/{resource_id:path}")
 def aws_resource_details(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
-    # Find resource in the list to return details
     import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}", headers=headers, timeout=10)
         if res.status_code == 200:
             return res.json()
     except Exception:
@@ -2970,9 +2997,11 @@ def aws_resource_details(resource_id: str, current_user: dict = Depends(get_curr
 def aws_resource_subresources(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
     import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/subresources", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/subresources", headers=headers, timeout=10)
         if res.status_code == 200:
             return res.json()
         elif res.status_code == 400:
@@ -2985,9 +3014,11 @@ def aws_resource_subresources(resource_id: str, current_user: dict = Depends(get
 def aws_resource_runtime(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
     import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/runtime", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/runtime", headers=headers, timeout=10)
         if res.status_code == 200:
             return res.json()
         elif res.status_code == 400:
@@ -2996,13 +3027,47 @@ def aws_resource_runtime(resource_id: str, current_user: dict = Depends(get_curr
         if isinstance(e, HTTPException): raise e
     return {"status": "error", "message": "Failed to connect to Intelligence Service", "runtime": {"containers": [], "processes": []}}
 
+@app.get("/api/v1/aws/resources/{resource_id:path}/containers/{container_name}/logs")
+def aws_resource_container_logs(resource_id: str, container_name: str, current_user: dict = Depends(get_current_user)):
+    import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
+    safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
+    try:
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/containers/{container_name}/logs", headers=headers, timeout=15)
+        if res.status_code == 200:
+            return res.json()
+    except Exception as e:
+        pass
+    return {"status": "error", "message": "Failed to retrieve logs from container"}
+
+@app.get("/api/v1/aws/resources/{resource_id:path}/workloads")
+def aws_resource_workloads(resource_id: str, current_user: dict = Depends(get_current_user)):
+    import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
+    safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
+    try:
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/workloads", headers=headers, timeout=10)
+        if res.status_code == 200:
+            return res.json()
+        elif res.status_code == 400:
+            raise HTTPException(status_code=400, detail=res.json().get("detail", "Workloads discovery not supported for this resource type"))
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+    return {"status": "error", "message": "Failed to connect to EKS Workloads endpoint", "workloads": {}}
+
 @app.get("/api/v1/aws/resources/{resource_id:path}/cost")
 def aws_resource_cost(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
     import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/cost", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/cost", headers=headers, timeout=10)
         if res.status_code != 200:
             return {
                 "cost_status": "unavailable",
@@ -3018,8 +3083,11 @@ def aws_resource_cost(resource_id: str, current_user: dict = Depends(get_current
 @app.get("/api/v1/aws/resources/{resource_id:path}/risks")
 def aws_resource_risks(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
-    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/risks", timeout=10)
+    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/risks", headers=headers, timeout=10)
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail="Failed to fetch risks")
     return res.json()
@@ -3027,9 +3095,12 @@ def aws_resource_risks(resource_id: str, current_user: dict = Depends(get_curren
 @app.get("/api/v1/aws/resources/{resource_id:path}/logs")
 def aws_resource_logs(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/logs", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/logs", headers=headers, timeout=10)
         if res.status_code != 200:
             return {
                 "status": "partial_success",
@@ -3055,8 +3126,11 @@ def aws_resource_logs(resource_id: str, current_user: dict = Depends(get_current
 @app.get("/api/v1/aws/resources/{resource_id:path}/metrics")
 def aws_resource_metrics(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
-    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/metrics", timeout=10)
+    res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/metrics", headers=headers, timeout=10)
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail="Failed to fetch metrics")
     return res.json()
@@ -3064,9 +3138,12 @@ def aws_resource_metrics(resource_id: str, current_user: dict = Depends(get_curr
 @app.post("/api/v1/aws/resources/{resource_id:path}/rca")
 async def aws_resource_rca(resource_id: str, req: Request, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     req_data = await req.json()
-    res = requests.post(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/rca", json=req_data, timeout=60)
+    res = requests.post(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/rca", json=req_data, headers=headers, timeout=60)
     if res.status_code != 200:
         raise HTTPException(status_code=res.status_code, detail="Failed to fetch RCA")
     return res.json()
@@ -3074,9 +3151,12 @@ async def aws_resource_rca(resource_id: str, req: Request, current_user: dict = 
 @app.get("/api/v1/aws/resources/{resource_id:path}/events")
 def aws_resource_events(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/events", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/events", headers=headers, timeout=10)
         if res.status_code == 200:
             return res.json()
     except Exception:
@@ -3086,9 +3166,12 @@ def aws_resource_events(resource_id: str, current_user: dict = Depends(get_curre
 @app.get("/api/v1/aws/resources/{resource_id:path}/relationships")
 def aws_resource_relationships(resource_id: str, current_user: dict = Depends(get_current_user)):
     import requests
+    import urllib.parse
+    tenant_email = current_user.get("email")
+    headers = get_aws_headers(tenant_email)
     safe_id = urllib.parse.quote(urllib.parse.unquote(resource_id), safe="")
     try:
-        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/relationships", timeout=10)
+        res = requests.get(f"{AWS_INTELLIGENCE_SERVICE_URL}/api/v1/aws/resources/{safe_id}/relationships", headers=headers, timeout=10)
         if res.status_code == 200:
             return res.json()
     except Exception:

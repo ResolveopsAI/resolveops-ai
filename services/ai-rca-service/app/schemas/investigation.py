@@ -25,6 +25,8 @@ class ChatRequest(BaseModel):
     tenant_email: Optional[str] = None
     image_base64: Optional[str] = None
     previous_visual_spec: Optional[dict] = None  # For conversational visual editing
+    history: Optional[List[Dict[str, Any]]] = None  # Previous conversation turns for multi-turn context
+
 
 
 class EvidenceItem(BaseModel):
