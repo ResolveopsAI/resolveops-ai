@@ -2209,14 +2209,16 @@ def get_cloud_resources(current_user: dict = Depends(get_current_user)):
             try:
                 import requests
                 # Use EC2 role credentials if on EC2, or pass explicit keys if stored
-                req_body = {"auth_method": "environment", "regions": ["us-east-1"]}
                 aws_creds = integrations.get("aws", {}).get("credentials", {})
+                saved_region = aws_creds.get("region", aws_creds.get("default_region", "us-east-1"))
+                req_body = {"auth_method": "environment", "regions": [saved_region]}
                 if aws_creds.get("access_key_id"):
                     req_body = {
                         "auth_method": "access_keys",
                         "access_key_id": aws_creds.get("access_key_id"),
                         "secret_access_key": aws_creds.get("secret_access_key"),
-                        "regions": [aws_creds.get("region", "us-east-1")]
+                        "session_token": aws_creds.get("session_token"),
+                        "regions": [saved_region]
                     }
                 
                 aws_service_url = os.getenv("AWS_INTELLIGENCE_SERVICE_URL", "http://aws-intelligence-service:8000")

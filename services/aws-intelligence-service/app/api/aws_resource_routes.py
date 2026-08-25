@@ -42,6 +42,7 @@ class SyncRequest(BaseModel):
     auth_method: str = "environment"
     access_key_id: Optional[str] = None
     secret_access_key: Optional[str] = None
+    session_token: Optional[str] = None
     role_arn: Optional[str] = None
     external_id: Optional[str] = None
     regions: List[str] = ["us-east-1"]
@@ -78,6 +79,8 @@ def sync_resources(
             'aws_access_key_id': req.access_key_id,
             'aws_secret_access_key': req.secret_access_key
         }
+        if req.session_token:
+            auth_kwargs['aws_session_token'] = req.session_token
     elif req.auth_method == "role_arn":
         # Role assume logic would go here to generate temp credentials
         pass
