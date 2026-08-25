@@ -235,7 +235,7 @@ export default function MonitoringPage() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const API_BASE = '/api';
     const url = `${API_BASE}/v1/monitoring/cluster/stream?token=${encodeURIComponent(token)}`;
 
     setConnected(false);

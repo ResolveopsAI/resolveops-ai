@@ -1,5 +1,5 @@
 // src/lib/api.js
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = '/api';
 
 // Internal error codes that map to user-friendly messages
 const PROVIDER_ERROR_CODES = new Set([
